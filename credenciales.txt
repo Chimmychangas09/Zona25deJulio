@@ -1,0 +1,6 @@
+cd incidencias-25julio
+
+php -S localhost:8000 -t public
+
+admin@zona25julio.com
+GestionUrbana2026!

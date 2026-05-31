@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Incidencias Urbanas - Zona 25 de Julio</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <style>
+        :root {
+            --color-bg: #f8fafc;
+            --color-surface: #ffffff;
+            --color-primary: #1e40af;
+            --color-primary-hover: #1e3a8a;
+            --color-success: #15803d;
+            --color-warning: #b45309;
+            --color-danger: #b91c1c;
+            --color-text: #1e293b;
+            --color-text-muted: #64748b;
+            --color-border: #e2e8f0;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background-color: var(--color-bg); color: var(--color-text); line-height: 1.5; padding-bottom: 4rem; }
+
+        /* Contenedor Premium */
+        .container { max-width: 800px; margin: 0 auto; padding: 1.5rem; }
+
+        /* Encabezado */
+        header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 1rem 0; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .nav-wrapper { display: flex; justify-content: space-between; align-items: center; max-width: 800px; margin: 0 auto; padding: 0 1.5rem; }
+        .logo-area { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--color-primary); font-size: 1.1rem; }
+        .logo-area i { font-size: 1.5rem; }
+        .user-nav { display: flex; align-items: center; gap: 12px; }
+        .user-info { font-size: 0.85rem; text-align: right; }
+        .user-info span { display: block; color: var(--color-text-muted); font-size: 0.75rem; }
+        
+        /* Botones Quirúrgicos */
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s; }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover { background: var(--color-primary-hover); }
+        .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: var(--color-text); }
+        .btn-secondary:hover { background: #f1f5f9; }
+        .btn-danger { background: var(--color-danger); color: white; }
+
+        /* Vistas (Pantallas) */
+        .view-section { display: none; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .view-section.active { display: block; }
+        .view-title { font-size: 1.3rem; margin-bottom: 1.5rem; color: #0f172a; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem; }
+
+        /* Formularios Reactivos */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: #334155; }
+        .form-control { width: 100%; padding: 0.65rem; border: 1px solid var(--color-border); border-radius: 6px; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        .form-control:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(30,64,175,0.1); }
+        
+        /* Área de Geolocalización */
+        .geo-box { background: #f0fdf4; border: 1px dashed #bbf7d0; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; }
+        .geo-box.searching { background: #fef3c7; border-color: #fde68a; }
+        .geo-box.error { background: #fef2f2; border-color: #fca5a5; }
+        .geo-icon { font-size: 1.5rem; color: var(--color-success); }
+        .geo-box.searching .geo-icon { color: var(--color-warning); animation: pulse 1.5s infinite; }
+        .geo-box.error .geo-icon { color: var(--color-danger); }
+        .geo-text p { font-size: 0.85rem; font-weight: 600; }
+        .geo-text span { font-size: 0.75rem; color: var(--color-text-muted); }
+
+        /* Tarjetas de Incidencias (Dashboard) */
+        .incidencias-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+        @media(min-width: 640px) { .incidencias-grid { grid-template-columns: 1fr 1fr; } }
+        .incidencia-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .incidencia-img { width: 100%; height: 180px; object-fit: cover; background: #e2e8f0; }
+        .incidencia-body { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; }
+        .incidencia-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .incidencia-tag { font-size: 0.7rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+        .incidencia-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .incidencia-desc { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem; flex-grow: 1; }
+        .incidencia-footer { border-top: 1px solid var(--color-border); padding-top: 0.75rem; font-size: 0.75rem; color: var(--color-text-muted); display: flex; flex-direction: column; gap: 4px; }
+        .incidencia-footer i { font-size: 0.9rem; vertical-align: middle; }
+
+        /* Badges de Estado */
+        .badge { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+        .badge-pendiente { background: #fef3c7; color: #d97706; }
+        .badge-proceso { background: #e0f2fe; color: #0369a1; }
+        .badge-resuelto { background: #dcfce7; color: #15803d; }
+
+        /* Controles de Administración Vecinal */
+        .admin-actions { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--color-border); display: flex; gap: 6px; }
+        .select-status { padding: 0.35rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--color-border); }
+
+        /* Alertas y Feedback */
+        .alert { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; display: none; align-items: center; gap: 8px; }
+        .alert-error { background: #fef2f2; border: 1px solid #fee2e2; color: var(--color-danger); }
+        .alert-success { background: #f0fdf4; border: 1px solid #dcfce7; color: var(--color-success); }
+
+        /* Alternador de Autenticación */
+        .auth-toggle { text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--color-text-muted); }
+        .auth-toggle a { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* Bloque Upgrade Styles */
+        .dashboard-container { padding: 20px; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .dashboard-header h2 { color: #2c3e50; display: flex; align-items: center; gap: 10px; margin: 0; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric-card { display: flex; align-items: center; padding: 20px; border-radius: 12px; color: white; }
+        .card-pendiente { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .card-proceso { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .card-resuelto { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .card-icon { font-size: 2.5rem; margin-right: 15px; opacity: 0.8; }
+        .card-info h3 { font-size: 2rem; margin: 0; }
+        .card-info p { margin: 0; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; }
+        .analytics-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        @media (max-width: 900px) { .analytics-layout { grid-template-columns: 1fr; } }
+        .admin-item-card { display: flex; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 15px; border-left: 5px solid #ccc; }
+        .border-pendiente { border-left-color: #e74c3c; }
+        .border-enproceso { border-left-color: #f1c40f; }
+        .border-resuelto { border-left-color: #2ecc71; }
+        .admin-card-img img { width: 140px; height: 100%; object-fit: cover; }
+        .admin-card-body { padding: 15px; flex: 1; }
+        .control-actions select { padding: 5px 10px; border-radius: 5px; border: 1px solid #bdc3c7; background: #f8f9fa; cursor: pointer; }
+        .sidebar-box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        .density-list { list-style: none; padding: 0; margin: 0; }
+        .density-list li { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #f2f4f4; font-size: 0.9rem; }
+        .sector-count-badge { background: #eaedf0; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .timeline-container { max-height: 320px; overflow-y: auto; }
+        .timeline-item { position: relative; padding-left: 20px; margin-bottom: 15px; border-left: 2px solid #ebedef; }
+        .timeline-marker { position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #3498db; }
+        .time-stamp { font-size: 0.75rem; color: #bdc3c7; display: block; }
+        .transition-flow { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 0.85rem; }
+        .state-prev { color: #7f8c8d; text-decoration: line-through; }
+        .state-next { color: #2ecc71; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="nav-wrapper">
+            <div class="logo-area">
+                <i class="ti ti-building-community"></i>
+                <div>Zona 25 de Julio <span>El Alto</span></div>
+            </div>
+            <nav class="user-nav" id="navMenu">
+                </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <div id="globalAlert" class="alert"></div>
+
+        <section id="viewAuth" class="view-section active">
+            <h2 class="view-title" id="authTitle"><i class="ti ti-lock"></i> Ingresar al Sistema</h2>
+            <form id="formAuth">
+                <div class="form-group" id="groupNombre" style="display: none;">
+                    <label for="authNombre">Nombre Completo</label>
+                    <input type="text" id="authNombre" class="form-control" placeholder="Ej. Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="authCorreo">Correo Electrónico</label>
+                    <input type="email" id="authCorreo" class="form-control" placeholder="admin@zona25julio.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="authPassword">Contraseña</label>
+                    <input type="password" id="authPassword" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;" id="btnAuthSubmit">
+                    <i class="ti ti-login"></i> Iniciar Sesión
+                </button>
+                <div class="auth-toggle" id="authToggleArea">
+                    ¿Eres nuevo vecino? <a href="#" id="linkSwitchRegister">Regístrate aquí</a>
+                </div>
+            </form>
+        </section>
+
+        <section id="viewReportar" class="view-section">
+            <h2 class="view-title"><i class="ti ti-alert-triangle"></i> Reportar Nueva Incidencia</h2>
+            
+            <div id="geoStatusBox" class="geo-box searching">
+                <i class="ti ti-gps geo-icon" id="geoIcon"></i>
+                <div class="geo-text">
+                    <p id="geoTitle">Adquiriendo Coordenadas GPS...</p>
+                    <span id="geoCoords">Buscando satélites de posicionamiento en El Alto...</span>
+                </div>
+            </div>
+
+            <form id="formIncidencia" enctype="multipart/form-data">
+                <input type="hidden" id="incLatitud" name="latitud">
+                <input type="hidden" id="incLongitud" name="longitud">
+
+                <div class="form-group">
+                    <label for="incTipo">Tipo de Daño Urbano</label>
+                    <select id="incTipo" name="tipo_danio" class="form-control" required>
+                        <option value="">-- Seleccione una opción --</option>
+                        <option value="Bache Estructural">Bache o Deterioro de Calzada</option>
+                        <option value="Alumbrado Defectuoso">Alumbrado Público Inoperante</option>
+                        <option value="Acumulación de Residuos">Acumulación Crítica de Basura</option>
+                        <option value="Alcantarillado Obstruido">Sumidero o Alcantarilla Tapada</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="incDescripcion">Descripción del Problema</label>
+                    <textarea id="incDescripcion" name="descripcion" class="form-control" rows="3" placeholder="Detalla la gravedad o referencias del lugar..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="incFoto">Evidencia Fotográfica (Triple Filtro Activo)</label>
+                    <input type="file" id="incFoto" name="foto" class="form-control" accept="image/png, image/jpeg, image/jpg" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnReportarSubmit" disabled>
+                    <i class="ti ti-cloud-upload"></i> Enviar Reporte Oficial
+                </button>
+            </form>
+        </section>
+
+        <section id="viewDashboard" class="view-section">
+    <div class="dashboard-header-wrapper" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h2 class="view-title" style="margin-bottom:0; border:none; padding:0;"><i class="ti ti-layout-dashboard"></i> Panel de Control - Zona 25 de Julio</h2>
+            <p style="margin: 5px 0 0 0; color: #7f8c8d; font-size: 0.9rem;">Métricas volumétricas, gestión de incidencias y auditoría de estados en tiempo real.</p>
+        </div>
+        
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="btnExportarExcel" class="btn btn-success" style="background: #1f4e78; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; transition: background 0.2s;" onmouseover="this.style.background='#153552'" onmouseout="this.style.background='#1f4e78'">
+                <i class="ti ti-file-spreadsheet" style="font-size: 1.3rem;"></i> Exportar Reporte
+            </button>
+            
+            <button class="btn btn-secondary" id="btnRefresh" onclick="loadAdminDashboard()"><i class="ti ti-refresh"></i> Actualizar</button>
+        </div>
+    </div>
+
+    <div class="notification-wrapper" style="position: relative; display: inline-block;">
+    <button id="notiBellBtn" style="background: none; border: none; cursor: pointer; position: relative; padding: 10px; color: #2c3e50; transition: transform 0.2s;">
+        <i class="ti ti-bell" style="font-size: 1.8rem;"></i>
+        <span id="notiCountBadge" style="position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">3</span>
+    </button>
+
+    <div id="notiDropdown" style="display: none; position: absolute; right: 0; top: 100%; width: 320px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; z-index: 1000; overflow: hidden; font-family: 'Arial', sans-serif;">
+        <div style="background: #1f4e78; color: white; padding: 12px; font-weight: bold; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="ti ti-bell-ringing"></i> Alertas del Sector</span>
+            <span id="clearNotis" style="font-size: 0.75rem; cursor: pointer; text-decoration: underline; opacity: 0.8;">Marcar como leídas</span>
+        </div>
+        <div id="notiListContainer" style="max-height: 280px; overflow-y: auto;">
+            </div>
+        </div>
+        <div class="filters-toolbar" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; font-family: 'Arial', sans-serif;">
+    
+    <div style="flex: 1; min-width: 200px; position: relative;">
+        <label style="display: block; font-size: 0.8rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">Buscar Incidencia:</label>
+        <div style="position: relative;">
+            <i class="ti ti-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem;"></i>
+            <input type="text" id="searchFilterInput" placeholder="Ej. bache, poste, basura..." style="width: 100%; padding: 8px 8px 8px 35px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border 0.2s;" onfocus="this.style.border='1px solid #1f4e78'">
+        </div>
+    </div>
+
+    <div style="min-width: 150px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">Filtrar por Sector:</label>
+        <select id="sectorFilterSelect" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: white; outline: none;">
+            <option value="TODOS">🌍 Todos los Sectores</option>
+            <option value="Central">Plaza / Sector Central</option>
+            <option value="Norte">Sector Norte</option>
+            <option value="Periférico">Sector Periférico</option>
+        </select>
+    </div>
+
+    <div style="min-width: 150px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: bold; color: #64748b; margin-bottom: 5px;">Filtrar por Estado:</label>
+        <select id="estadoFilterSelect" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: white; outline: none;">
+            <option value="TODOS">📊 Todos los Estados</option>
+            <option value="Pendiente">Pendiente 🔴</option>
+            <option value="En Proceso">En Proceso 🟡</option>
+            <option value="Resuelto">Resuelto Green 🟢</option>
+        </select>
+    </div>
+</div>
+    </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card card-pendiente">
+                    <div class="card-icon"><i class="ti ti-alert-circle"></i></div>
+                    <div class="card-info">
+                        <h3 id="countPendientes">0</h3>
+                        <p>Pendientes</p>
+                    </div>
+                </div>
+                <div class="metric-card card-proceso">
+                    <div class="card-icon"><i class="ti ti-settings"></i></div>
+                    <div class="card-info">
+                        <h3 id="countProceso">0</h3>
+                        <p>En Proceso</p>
+                    </div>
+                </div>
+                <div class="metric-card card-resuelto">
+                    <div class="card-icon"><i class="ti ti-circle-check"></i></div>
+                    <div class="card-info">
+                        <h3 id="countResueltas">0</h3>
+                        <p>Resueltas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analytics-layout">
+                <div class="analytics-main">
+                    <h3><i class="ti ti-list"></i> Listado de Incidencias Reportadas</h3>
+                    <div id="adminIncidenciasList" class="incidencias-admin-list">
+                        </div>
+                </div>
+
+                <div class="analytics-sidebar">
+                    <div class="sidebar-box sectors-box">
+                        <h3><i class="ti ti-map-pin"></i> Sectores Críticos</h3>
+                        <ul id="sectorsDensityList" class="density-list">
+                            </ul>
+                    </div>
+
+                    <div class="sidebar-box audit-box">
+                        <h3><i class="ti ti-history"></i> Historial de Auditoría (Logs)</h3>
+                        <div id="auditTimeline" class="timeline-container">
+                            <p class="empty-text">Cargando bitácora transaccional...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Configuración del entorno del cliente
+        const API_BASE = 'http://localhost:8000/api'; // Ajustar según el puerto de tu servidor PHP local
+        const FILE_SERVER = 'http://localhost:8000/';
+
+        // Estado Global del Cliente en Memoria de Corto Plazo
+        let AppState = {
+            token: localStorage.getItem('token') || null,
+            user: JSON.parse(localStorage.getItem('user')) || null,
+            isRegisterMode: false
+        };
+
+        // --- ORQUESTADOR DE NAVEGACIÓN Y VISTAS ---
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(section => section.classList.remove('active'));
+            const targetView = document.getElementById(viewId);
+            if (targetView) targetView.classList.add('active');
+            
+            // Acciones complementarias al abrir vistas específicas
+            if (viewId === 'viewReportar') initializeGeolocation();
+            if (viewId === 'viewDashboard') loadAdminDashboard();
+        }
+
+        function renderNavbar() {
+            const navMenu = document.getElementById('navMenu');
+            if (AppState.token && AppState.user) {
+                navMenu.innerHTML = `
+                    <div class="user-info">
+                        <strong>${AppState.user.nombre}</strong>
+                        <span>Rol: ${AppState.user.rol}</span>
+                    </div>
+                    <button class="btn btn-secondary" id="navBtnReportar"><i class="ti ti-alert-triangle"></i> Reportar</button>
+                    <button class="btn btn-secondary" id="navBtnDashboard"><i class="ti ti-layout-dashboard"></i> Panel</button>
+                    <button class="btn btn-danger" id="navBtnLogout"><i class="ti ti-logout"></i></button>
+                `;
+                // Vincular eventos dinámicos de la barra de navegación
+                document.getElementById('navBtnReportar').addEventListener('click', () => switchView('viewReportar'));
+                document.getElementById('navBtnDashboard').addEventListener('click', () => switchView('viewDashboard'));
+                document.getElementById('navBtnLogout').addEventListener('click', handleLogout);
+            } else {
+                navMenu.innerHTML = `<span style="font-size:0.85rem; color:var(--color-text-muted);">Invitado</span>`;
+            }
+        }
+
+        function displayAlert(message, type = 'success') {
+            const alertBox = document.getElementById('globalAlert');
+            alertBox.className = `alert alert-${type}`;
+            alertBox.innerHTML = `<i class="ti ti-${type === 'success' ? 'circle-check' : 'alert-circle'}"></i> ${message}`;
+            alertBox.style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { alertBox.style.display = 'none'; }, 6000);
+        }
+
+        // --- MÓDULO DE AUTENTICACIÓN ---
+        document.getElementById('linkSwitchRegister').addEventListener('click', (e) => {
+        e.preventDefault();
+        AppState.isRegisterMode = !AppState.isRegisterMode;
+    
+        const title = document.getElementById('authTitle');
+        const groupNombre = document.getElementById('groupNombre');
+        const btnSubmit = document.getElementById('btnAuthSubmit');
+        const toggleArea = document.getElementById('authToggleArea');
+
+        if (AppState.isRegisterMode) {
+        title.innerHTML = `<i class="ti ti-user-plus"></i> Registro Vecinal`;
+        groupNombre.style.display = 'block';
+        document.getElementById('authNombre').required = true;
+        btnSubmit.innerHTML = `<i class="ti ti-user-plus"></i> Dar de Alta Cuenta`;
+        toggleArea.innerHTML = `¿Ya tienes cuenta? <a href="#" id="linkSwitchLogin">Ingresa aquí</a>`;
+        
+        // CORRECCIÓN AQUÍ: Vinculación directa al nuevo enlace generado dinámicamente
+        document.getElementById('linkSwitchLogin').addEventListener('click', (event) => {
+            event.preventDefault();
+            document.getElementById('linkSwitchRegister').click();
+        });
+        } else {
+        title.innerHTML = `<i class="ti ti-lock"></i> Ingresar al Sistema`;
+        groupNombre.style.display = 'none';
+        document.getElementById('authNombre').required = false;
+        btnSubmit.innerHTML = `<i class="ti ti-login"></i> Iniciar Sesión`;
+        toggleArea.innerHTML = `¿Eres nuevo vecino? <a href="#" id="linkSwitchRegister">Regístrate aquí</a>`;
+        }
+        });
+
+        document.getElementById('formAuth').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const correo = document.getElementById('authCorreo').value;
+            const password = document.getElementById('authPassword').value;
+            const endpoint = AppState.isRegisterMode ? '/auth/register' : '/auth/login';
+            
+            let bodyData = { correo, password };
+            if (AppState.isRegisterMode) bodyData.nombre = document.getElementById('authNombre').value;
+
+            try {
+                const response = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) throw new Error(result.message || 'Error en la operación.');
+
+                if (AppState.isRegisterMode) {
+                    displayAlert('Registro completado. Por favor, inicie sesión.');
+                    document.getElementById('linkSwitchRegister').click(); // Volver a modo login
+                } else {
+                    localStorage.setItem('token', result.data.token);
+                    localStorage.setItem('user', JSON.stringify(result.data.user));
+                    AppState.token = result.data.token;
+                    AppState.user = result.data.user;
+                    
+                    renderNavbar();
+                    displayAlert('Autenticación correcta. Bienvenido al panel urbano.');
+                    switchView('viewDashboard');
+                }
+                document.getElementById('formAuth').reset();
+            } catch (err) {
+                displayAlert(err.message, 'error');
+            }
+        });
+
+        function handleLogout() {
+            localStorage.clear();
+            AppState.token = null;
+            AppState.user = null;
+            renderNavbar();
+            switchView('viewAuth');
+            displayAlert('Sesión cerrada correctamente.');
+        }
+
+        // --- MÓDULO DE GEOLOCALIZACIÓN NATIVA ---
+        function initializeGeolocation() {
+            const box = document.getElementById('geoStatusBox');
+            const title = document.getElementById('geoTitle');
+            const coordsSpan = document.getElementById('geoCoords');
+            const btnSubmit = document.getElementById('btnReportarSubmit');
+
+            if (!navigator.geolocation) {
+                box.className = 'geo-box error';
+                title.innerText = 'Sensor Incompatible';
+                coordsSpan.innerText = 'Tu navegador no soporta la API de Geolocalización de HTML5.';
+                return;
+            }
+
+            box.className = 'geo-box searching';
+            title.innerText = 'Adquiriendo Coordenadas GPS...';
+            coordsSpan.innerText = 'Buscando satélites de posicionamiento en El Alto...';
+            btnSubmit.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    document.getElementById('incLatitud').value = lat;
+                    document.getElementById('incLongitud').value = lng;
+
+                    box.className = 'geo-box';
+                    title.innerText = 'Ubicación Satelital Fijada';
+                    coordsSpan.innerText = `Latitud: ${lat.toFixed(6)} | Longitud: ${lng.toFixed(6)} (Precisión: ${position.coords.accuracy.toFixed(1)}m)`;
+                    btnSubmit.disabled = false;
+                },
+                (error) => {
+                    box.className = 'geo-box error';
+                    title.innerText = 'Fallo del Sensor GPS';
+                    btnSubmit.disabled = true;
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            coordsSpan.innerText = "Acceso denegado. Debes otorgar permisos de GPS para reportar.";
+                            break;
+                        default:
+                            coordsSpan.innerText = "No se logró capturar la ubicación física actual.";
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // --- MÓDULO OPERATIVO: CREAR INCIDENCIA ---
+        document.getElementById('formIncidencia').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(document.getElementById('formIncidencia'));
+
+            try {
+                const response = await fetch(API_BASE + '/incidencias', {
+                    method: 'POST',
+                    headers: { 'Authorization': AppState.token },
+                    body: formData // Enviar como FormData nativo para soportar streams de archivos binary
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Error al procesar subida.');
+
+                displayAlert('Incidencia subida y asignada al ' + result.data.sector);
+                document.getElementById('formIncidencia').reset();
+                switchView('viewDashboard');
+            } catch (err) {
+                displayAlert(err.message, 'error');
+            }
+        });
+
+        // --- MÓDULO ANALÍTICO: CARGAR Y GESTIONAR ESTADOS --- borrao
+
+        async function updateStatus(id, nuevoEstado) {
+            try {
+                const response = await fetch(`${API_BASE}/incidencias/${id}/estado`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': AppState.token
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message);
+
+                displayAlert(result.message);
+                loadAdminDashboard(); // Refrescar el tablero
+            } catch (err) {
+                displayAlert(err.message, 'error');
+            }
+        }
+
+        // --- INICIALIZADOR DE ARRANQUE ---
+        document.getElementById('btnRefresh').addEventListener('click', loadAdminDashboard);
+
+        // Evaluar estado de sesión inicial para ruteo temprano de la SPA
+        if (AppState.token && AppState.user) {
+            renderNavbar();
+            switchView('viewDashboard');
+        } else {
+            switchView('viewAuth');
+        }
+
+        // Carga e integración de datos paralelos
+// 🚀 PRIMERO: Asegúrate de que esta variable esté declarada AFUERA y ARRIBA de la función, en tus scripts globales
+let BACKEND_INCIDENCIAS_CACHE = [];
+
+async function loadAdminDashboard() {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Petición 1: Incidencias y clasificación
+        const resInc = await fetch('http://localhost:8000/api/incidencias', {
+            headers: { 'Authorization': token }
+        });
+        const dataInc = await resInc.json();
+        
+        if (dataInc.status === 'success') {
+            // 🚀 INTERCEPCIÓN MAESTRA: Guardamos los datos puros del backend en nuestra caché global
+            BACKEND_INCIDENCIAS_CACHE = dataInc.data;
+            
+            // Renderizamos inicialmente con la lista completa de la caché
+            renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
+            renderSectorsDensity(BACKEND_INCIDENCIAS_CACHE); // Algoritmo US06
+        }
+
+        // Petición 2: Bitácora de Auditoría en Vivo
+        const resAudit = await fetch('http://localhost:8000/api/admin/auditoria', {
+            headers: { 'Authorization': token }
+        });
+        const dataAudit = await resAudit.json();
+        
+        if (dataAudit.status === 'success') {
+            renderAuditTimeline(dataAudit.data); // Renderizado US04
+        }
+    } catch (error) {
+        console.error("Error en el flujo del Bloque Upgrade:", error);
+    }
+}
+
+// Inyección dinámica de datos y cálculo de insignias de color (F03)
+// Inyección dinámica de datos y cálculo de insignias de color (F03) - VERSIÓN BLINDADA
+function renderMetricsAndIncidencias(incidencias) {
+    let pendientes = 0, proceso = 0, resueltas = 0;
+    const container = document.getElementById('adminIncidenciasList');
+    container.innerHTML = '';
+
+    incidencias.forEach(item => {
+        if (item.estado === 'Pendiente') pendientes++;
+        if (item.estado === 'En Proceso') proceso++;
+        if (item.estado === 'Resuelto') resueltas++;
+
+        const badgeClass = item.estado === 'Pendiente' ? 'badge-danger' : (item.estado === 'En Proceso' ? 'badge-warning' : 'badge-success');
+
+        // 🖼️ TRATAMIENTO DE IMÁGENES REPARADO CON FOTO_URL
+        let contenedorImagenHTML = "";
+        
+        // 1. Usamos la propiedad correcta 'foto_url' y limpiamos los caracteres de escape (\/)
+        if (item.foto_url && item.foto_url.trim() !== "") {
+            const rutaLimpia = item.foto_url.replace(/\\/g, ''); // Quita las barras invertidas intrusas
+            
+            // 2. Construimos la URL real apuntando al backend (puerto 8000)
+            const URL_FOTO = `http://localhost:8000/${rutaLimpia}`;
+            
+            // Salvavidas onerror por si el archivo físico fue borrado en la carpeta uploads
+            contenedorImagenHTML = `
+                <img src="${URL_FOTO}" alt="Evidencia" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="fallback-foto-box" style="display:none; width:140px; height:100%; background:#f2f4f4; align-items:center; justify-content:center; text-align:center; color:#7f8c8d; font-size:0.8rem; padding:10px; flex-direction:column;">
+                    <i class="ti ti-photo-off" style="font-size:1.5rem;"></i><span>No disponible</span>
+                </div>
+            `;
+        } else {
+            // Si el campo directamente venía vacío en la base de datos
+            contenedorImagenHTML = `
+                <div class="fallback-foto-box" style="display:flex; width:140px; height:100%; background:#eeeeee; align-items:center; justify-content:center; text-align:center; color:#7f8c8d; font-size:0.8rem; padding:10px; flex-direction:column; gap:5px;">
+                    <i class="ti ti-camera-off" style="font-size:1.5rem;"></i>
+                    <span>Sin Registro</span>
+                </div>
+            `;
+        }
+
+        container.innerHTML += `
+            <div class="admin-item-card border-${item.estado.toLowerCase().replace(' ', '')}">
+                <div class="admin-card-img" style="width:140px; min-width:140px; background:#f8f9fa; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                    ${contenedorImagenHTML}
+                </div>
+                <div class="admin-card-body">
+                    <span class="badge ${badgeClass}">${item.estado}</span>
+                    <h4>${item.tipo_danio}</h4>
+                    <p class="sector-text"><i class="ti ti-map-pin"></i> ${item.sector || 'Sector General'}</p>
+                    <p class="desc-text">${item.descripcion}</p>
+                    <div class="control-actions">
+                        <label>Cambiar Estado:</label>
+                        <select onchange="updateIncidenciaEstado(${item.id}, this.value)">
+                            <option value="Pendiente" ${item.estado === 'Pendiente' ? 'selected' : ''}>Pendiente 🔴</option>
+                            <option value="En Proceso" ${item.estado === 'En Proceso' ? 'selected' : ''}>En Proceso 🟡</option>
+                            <option value="Resuelto" ${item.estado === 'Resuelto' ? 'selected' : ''}>Resuelto 🟢</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById('countPendientes').innerText = pendientes;
+    document.getElementById('countProceso').innerText = proceso;
+    document.getElementById('countResueltas').innerText = resueltas;
+}
+
+
+// Algoritmo de ordenamiento volumétrico por densidad de daños (US06)
+function renderSectorsDensity(incidencias) {
+    const sectorCounts = {};
+    incidencias.forEach(item => {
+        sectorCounts[item.sector] = (sectorCounts[item.sector] || 0) + 1;
+    });
+
+    const sortedSectors = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]);
+    const listContainer = document.getElementById('sectorsDensityList');
+    listContainer.innerHTML = '';
+
+    sortedSectors.forEach(([sector, count]) => {
+        listContainer.innerHTML += `
+            <li>
+                <span class="sector-name">${sector}</span>
+                <span class="sector-count-badge">${count} reportes</span>
+            </li>
+        `;
+    });
+}
+
+// Pintar la línea de tiempo de auditoría transaccional (US04)
+function renderAuditTimeline(logs) {
+    const timeline = document.getElementById('auditTimeline');
+    timeline.innerHTML = '';
+
+    // 🚀 BLINDAJE 1: Controlar si la variable viene vacía o nula de forma segura
+    if (!logs || logs.length === 0) {
+        timeline.innerHTML = '<p class="empty-text">No hay movimientos registrados en la bitácora.</p>';
+        return;
+    }
+
+    logs.forEach(log => {
+        // 🚀 BLINDAJE 2: Gestión adaptativa del tiempo para SQLite
+        // Si no existe la columna cambiado_en, usamos una etiqueta estática elegante con el ID del log
+        let fechaFormateada = "Registro Guardado";
+        if (log.cambiado_en) {
+            fechaFormateada = new Date(log.cambiado_en).toLocaleString('es-BO');
+        } else {
+            fechaFormateada = `Operación Transaccional (Log #${log.id})`;
+        }
+
+        timeline.innerHTML += `
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <span class="time-stamp"><i class="ti ti-clock"></i> ${fechaFormateada}</span>
+                    <p><strong>${log.administrador_nombre || 'Administrador'}</strong> modificó la incidencia de <em>${log.tipo_danio || 'Daño Urbano'}</em></p>
+                    <p class="transition-flow">
+                        <span class="state-prev">${log.estado_anterior}</span> 
+                        <i class="ti ti-arrow-narrow-right"></i> 
+                        <span class="state-next">${log.estado_nuevo}</span>
+                    </p>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// Intercepción y re-renderizado automático
+async function updateIncidenciaEstado(id, nuevoEstado) {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`http://localhost:8000/api/incidencias/${id}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ estado: nuevoEstado })
+    });
+    
+    const data = await res.json();
+    if(data.status === 'success') {
+        loadAdminDashboard(); // ¡Recarga reactiva inmediata del Bloque Upgrade!
+    }
+}
+
+document.getElementById('btnExportarExcel').addEventListener('click', function() {
+    // Apuntamos directamente a la URL del backend encargada de escupir el archivo binario
+    window.location.href = "http://localhost:8000/api/admin/exportar";
+});
+
+// 🔔 LOGICA DEL MÓDULO DE NOTIFICACIONES REAL-TIME (MOCK)
+document.addEventListener("DOMContentLoaded", function() {
+    const notiBellBtn = document.getElementById('notiBellBtn');
+    const notiDropdown = document.getElementById('notiDropdown');
+    const notiCountBadge = document.getElementById('notiCountBadge');
+    const notiListContainer = document.getElementById('notiListContainer');
+    const clearNotis = document.getElementById('clearNotis');
+
+    // Base de datos local temporal de alertas iniciales
+    let alertas = [
+        { id: 1, icono: '🔴', titulo: 'Nuevo Reporte', desc: 'Bache crítico registrado por vecino en Sector Norte.', tiempo: 'Hace 5 min' },
+        { id: 2, icono: '🟡', titulo: 'Cambio de Estado', desc: 'Incidencia #3 pasó a "En Proceso".', tiempo: 'Hace 20 min' },
+        { id: 3, icono: '🟢', titulo: 'Caso Resuelto', desc: 'Se cerró con éxito el reporte de acumulación de basura.', tiempo: 'Hace 1 hora' }
+    ];
+
+    // Función para renderizar las alertas dentro del menú flotante
+    function renderAlertas() {
+        notiListContainer.innerHTML = '';
+        
+        if (alertas.length === 0) {
+            notiCountBadge.style.display = 'none';
+            notiListContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #7f8c8d; font-size: 0.85rem;"><i class="ti ti-bell-off" style="font-size: 1.5rem;"></i><br>No tienes notificaciones pendientes</div>`;
+            return;
+        }
+
+        notiCountBadge.style.display = 'flex';
+        notiCountBadge.innerText = alertas.length;
+
+        alertas.forEach(alerta => {
+            notiListContainer.innerHTML += `
+                <div style="padding: 12px; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; cursor: pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 1.2rem; margin-top: 2px;">${alerta.icono}</span>
+                        <div style="flex: 1;">
+                            <h5 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: bold;">${alerta.titulo}</h5>
+                            <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #64748b; line-height: 1.3;">${alerta.desc}</p>
+                            <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-top: 5px;"><i class="ti ti-clock"></i> ${alerta.tiempo}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // Evento para abrir y cerrar el menú desplegable
+    notiBellBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        notiDropdown.style.display = notiDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Cerrar el menú si se hace clic en cualquier otra parte de la pantalla
+    document.addEventListener('click', function() {
+        notiDropdown.style.display = 'none';
+    });
+
+    // Limpiar notificaciones (Marcar como leídas)
+    clearNotis.addEventListener('click', function(e) {
+        e.stopPropagation();
+        alertas = [];
+        renderAlertas();
+    });
+
+    // 🚀 EFECTO WOW: SIMULADOR DE INCIDENCIA EN TIEMPO REAL TRAS 7 SEGUNDOS
+    setTimeout(function() {
+        // Añadimos una nueva alerta de emergencia de forma dinámica al arreglo
+        alertas.unshift({
+            id: 4,
+            icono: '⚡',
+            titulo: 'ALERTA EN VIVO',
+            desc: 'Vecino reporta corte total de luminarias en Sector Central.',
+            tiempo: 'Ahora mismo'
+        });
+
+        // Hacemos que la campana vibre físicamente usando un pequeño truco de transformación CSS
+        notiBellBtn.style.transform = "scale(1.3) rotate(15deg)";
+        setTimeout(() => notiBellBtn.style.transform = "scale(1.3) rotate(-15deg)", 150);
+        setTimeout(() => notiBellBtn.style.transform = "scale(1.3) rotate(10deg)", 300);
+        setTimeout(() => notiBellBtn.style.transform = "scale(1)", 450);
+
+        // Volvemos a pintar las alertas con el nuevo dato inyectado en caliente
+        renderAlertas();
+    }, 7000); // 7000 milisegundos = 7 segundos después de cargar la página
+
+    // Inicializar la campana al arrancar
+    renderAlertas();
+});
+
+    // 🔍 MOTOR DE FILTRADO COMBINADO EN TIEMPO REAL
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById('searchFilterInput');
+    const sectorSelect = document.getElementById('sectorFilterSelect');
+    const estadoSelect = document.getElementById('estadoFilterSelect');
+
+    function ejecutarFiltrosCombinados() {
+        const textoBusqueda = searchInput.value.toLowerCase().trim();
+        const sectorSeleccionado = sectorSelect.value;
+        const estadoSeleccionado = estadoSelect.value;
+
+        // Aplicamos un súper filtro cruzado de tres niveles sobre la caché en memoria
+        const incidenciasFiltradas = BACKEND_INCIDENCIAS_CACHE.filter(item => {
+            
+            // 1. Filtro por Texto (busca coincidencias en tipo de daño o descripción)
+            const coincideTexto = item.tipo_danio.toLowerCase().includes(textoBusqueda) || 
+                                 item.descripcion.toLowerCase().includes(textoBusqueda);
+            
+            // 2. Filtro por Sector (búsqueda parcial inteligente)
+            const coincideSector = (sectorSeleccionado === "TODOS") || 
+                                   (item.sector && item.sector.toLowerCase().includes(sectorSeleccionado.toLowerCase()));
+            
+            // 3. Filtro por Estado 
+            const coincideEstado = (estadoSeleccionado === "TODOS") || 
+                                   (item.estado === estadoSeleccionado);
+
+            // La incidencia pasa solo si cumple las 3 condiciones al mismo tiempo
+            return coincideTexto && coincideSector && coincideEstado;
+        });
+
+        // Volvemos a renderizar las tarjetas y a recalcular los contadores con el subconjunto filtrado
+        renderMetricsAndIncidencias(incidenciasFiltradas);
+    }
+
+    // Escuchadores de eventos en tiempo real (Input para el teclado, Change para los selectores)
+    searchInput.addEventListener('input', ejecutarFiltrosCombinados);
+    sectorSelect.addEventListener('change', ejecutarFiltrosCombinados);
+    estadoSelect.addEventListener('change', ejecutarFiltrosCombinados);
+});
+    </script>
+</body>
+</html>

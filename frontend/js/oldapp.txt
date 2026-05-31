@@ -1,0 +1,422 @@
+// ==========================================
+// 🌐 VARIABLES GLOBALES Y CACHÉ
+// ==========================================
+const API_BASE = 'http://localhost:8000/api'; 
+const FILE_SERVER = 'http://localhost:8000/';
+
+let AppState = {
+    token: localStorage.getItem('token') || null,
+    user: JSON.parse(localStorage.getItem('user')) || null,
+    isRegisterMode: false
+};
+
+let BACKEND_INCIDENCIAS_CACHE = [];
+let NOTI_ALERTAS = [
+    { id: 1, icono: '🔴', titulo: 'Nuevo Reporte', desc: 'Bache crítico registrado en Sector Norte.', tiempo: 'Hace 5 min' },
+    { id: 2, icono: '🟡', titulo: 'Cambio de Estado', desc: 'Incidencia #3 pasó a "En Proceso".', tiempo: 'Hace 20 min' }
+];
+
+// ==========================================
+// 🚀 INICIALIZADOR DE LA APLICACIÓN
+// ==========================================
+document.addEventListener("DOMContentLoaded", function() {
+    renderNavbar();
+    initNotificationBell();
+    initFilterSystem();
+    initAuthEventListeners();
+    initIncidentFormListener();
+    
+    // Determinar la vista inicial según la sesión activa
+    if (AppState.token && AppState.user) {
+        switchView('viewDashboard');
+    } else {
+        switchView('viewAuth');
+    }
+});
+
+// ==========================================
+// 🧭 ORQUESTADOR DE NAVEGACIÓN Y VISTAS
+// ==========================================
+function switchView(viewId) {
+    document.querySelectorAll('section').forEach(section => section.classList.add('hidden'));
+    const targetView = document.getElementById(viewId);
+    if (targetView) targetView.classList.remove('hidden');
+    
+    if (viewId === 'viewReportar') initializeGeolocation();
+    if (viewId === 'viewDashboard') loadAdminDashboard();
+}
+
+function renderNavbar() {
+    const navMenu = document.getElementById('navMenu');
+    if (AppState.token && AppState.user) {
+        navMenu.innerHTML = `
+            <div class="text-right leading-tight hidden sm:block">
+                <strong class="block text-slate-800 text-xs">${AppState.user.nombre}</strong>
+                <span class="text-[10px] text-slate-400 font-medium">Rol: ${AppState.user.rol}</span>
+            </div>
+            <button class="border border-slate-200 text-slate-700 hover:bg-slate-50 py-1.5 px-3 rounded-md flex items-center gap-1 font-medium" id="navBtnReportar"><i class="ti ti-alert-triangle text-amber-500"></i> Reportar</button>
+            <button class="border border-slate-200 text-slate-700 hover:bg-slate-50 py-1.5 px-3 rounded-md flex items-center gap-1 font-medium" id="navBtnDashboard"><i class="ti ti-layout-dashboard text-blue-600"></i> Panel</button>
+            <button class="bg-red-500 text-white hover:bg-red-600 p-1.5 rounded-md flex items-center" id="navBtnLogout"><i class="ti ti-logout text-base"></i></button>
+        `;
+        document.getElementById('navBtnReportar').addEventListener('click', () => switchView('viewReportar'));
+        document.getElementById('navBtnDashboard').addEventListener('click', () => switchView('viewDashboard'));
+        document.getElementById('navBtnLogout').addEventListener('click', handleLogout);
+    } else {
+        navMenu.innerHTML = `<span class="text-slate-400 text-xs">Invitado</span>`;
+    }
+}
+
+function displayAlert(message, type = 'success') {
+    const alertBox = document.getElementById('globalAlert');
+    alertBox.className = `flex items-center gap-2 p-4 mb-4 text-sm rounded-lg border shadow-sm transition-all duration-300 ${
+        type === 'success' 
+        ? 'bg-green-50 border-green-200 text-green-800' 
+        : 'bg-red-50 border-red-200 text-red-800'
+    }`;
+    alertBox.innerHTML = `<i class="ti ti-${type === 'success' ? 'circle-check' : 'alert-circle'} text-lg"></i> <span>${message}</span>`;
+    alertBox.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { alertBox.classList.add('hidden'); }, 6000);
+}
+
+// ==========================================
+// 📊 RENDERIZADORES COMPONENTIZADOS
+// ==========================================
+function renderMetricsAndIncidencias(incidencias) {
+    const listContainer = document.getElementById('adminIncidenciasList');
+    if (!listContainer) return;
+
+    // 1. Calcular Métricas en base al array recibido
+    const mPendientes = incidencias.filter(i => i.estado === 'Pendiente').length;
+    const mProceso = incidencias.filter(i => i.estado === 'En Proceso').length;
+    const mResueltas = incidencias.filter(i => i.estado === 'Resuelto').length;
+
+    document.getElementById('countPendientes').innerText = mPendientes;
+    document.getElementById('countProceso').innerText = mProceso;
+    document.getElementById('countResueltas').innerText = mResueltas;
+
+    // 2. Renderizar Listado de Tarjetas
+    if (incidencias.length === 0) {
+        listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">No se encontraron incidencias con los filtros aplicados.</p>`;
+        return;
+    }
+
+    listContainer.innerHTML = incidencias.map(inc => {
+        const colorEstado = inc.estado === 'Pendiente' ? 'border-l-red-500' : inc.estado === 'En Proceso' ? 'border-l-amber-500' : 'border-l-green-500';
+        const badgeEstado = inc.estado === 'Pendiente' ? 'bg-red-100 text-red-700' : inc.estado === 'En Proceso' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+        const urlFoto = inc.foto ? (inc.foto.startsWith('http') ? inc.foto : FILE_SERVER + inc.foto) : 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150';
+
+        return `
+            <div class="flex bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden border-l-4 ${colorEstado}">
+                <div class="w-28 sm:w-36 h-auto min-h-[110px] bg-slate-100 flex-shrink-0">
+                    <img src="${urlFoto}" alt="Evidencia" class="w-full h-full object-cover">
+                </div>
+                <div class="p-3.5 flex-1 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <span class="text-[10px] uppercase font-bold tracking-tight bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${inc.tipo_danio || 'Urbano'}</span>
+                            <span class="text-[10px] font-semibold ${badgeEstado} px-2 py-0.5 rounded-full">${inc.estado}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 line-clamp-2">${inc.descripcion}</p>
+                    </div>
+                    <div class="border-t border-slate-100 pt-2 mt-2 flex items-center justify-between text-[10px] text-slate-400">
+                        <span><i class="ti ti-map-pin"></i> ${inc.sector || 'Sector Desconocido'}</span>
+                        <div class="flex items-center gap-1">
+                            <select onchange="updateStatus(${inc.id}, this.value)" class="p-1 text-[10px] bg-slate-50 border border-slate-200 rounded cursor-pointer outline-none">
+                                <option value="Pendiente" ${inc.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                                <option value="En Proceso" ${inc.estado === 'En Proceso' ? 'selected' : ''}>En Proceso</option>
+                                <option value="Resuelto" ${inc.estado === 'Resuelto' ? 'selected' : ''}>Resuelto</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderVecinoIncidencias(incidencias) {
+    // Implementación futura o alternativa para flujo visual simplificado del vecino.
+    renderMetricsAndIncidencias(incidencias);
+}
+
+// ==========================================
+// 🔍 MOTOR DE FILTRADO Y ALERTAS
+// ==========================================
+function initFilterSystem() {
+    const searchInput = document.getElementById('searchFilterInput');
+    const sectorSelect = document.getElementById('sectorFilterSelect');
+    const estadoSelect = document.getElementById('estadoFilterSelect');
+
+    if (!searchInput || !sectorSelect || !estadoSelect) return;
+
+    const filtrarCache = () => {
+        const query = searchInput.value.toLowerCase().trim();
+        const sectorSelected = sectorSelect.value;
+        const estadoSelected = estadoSelect.value;
+
+        const resultadoFiltrado = BACKEND_INCIDENCIAS_CACHE.filter(inc => {
+            const matchesSearch = inc.descripcion.toLowerCase().includes(query) || inc.tipo_danio.toLowerCase().includes(query);
+            const matchesSector = sectorSelected === 'TODOS' || inc.sector === sectorSelected;
+            const matchesEstado = estadoSelected === 'TODOS' || inc.estado === estadoSelected;
+
+            return matchesSearch && matchesSector && matchesEstado;
+        });
+
+        renderMetricsAndIncidencias(resultadoFiltrado);
+    };
+
+    searchInput.addEventListener('input', filtrarCache);
+    sectorSelect.addEventListener('change', filtrarCache);
+    estadoSelect.addEventListener('change', filtrarCache);
+}
+
+function initNotificationBell() {
+    const bellBtn = document.getElementById('notiBellBtn');
+    const dropdown = document.getElementById('notiDropdown');
+    const listContainer = document.getElementById('notiListContainer');
+    const badge = document.getElementById('notiCountBadge');
+    const clearBtn = document.getElementById('clearNotis');
+
+    if (!bellBtn || !dropdown) return;
+
+    // Toggle Dropdown
+    bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', () => dropdown.classList.add('hidden'));
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+
+    // Actualizar la interfaz de alertas
+    const renderAlerts = () => {
+        if (NOTI_ALERTAS.length === 0) {
+            badge.classList.add('hidden');
+            listContainer.innerHTML = `<p class="p-4 text-center text-slate-400">Sin alertas nuevas</p>`;
+            return;
+        }
+        badge.classList.remove('hidden');
+        badge.innerText = NOTI_ALERTAS.length;
+
+        listContainer.innerHTML = NOTI_ALERTAS.map(alerta => `
+            <div class="p-3 hover:bg-slate-50 transition-colors">
+                <div class="flex gap-2">
+                    <span>${alerta.icono}</span>
+                    <div class="flex-1">
+                        <div class="flex justify-between font-semibold text-slate-800">
+                            <span>${alerta.titulo}</span>
+                            <span class="text-[10px] text-slate-400 font-normal">${alerta.tiempo}</span>
+                        </div>
+                        <p class="text-slate-500 mt-0.5 leading-tight">${alerta.desc}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // Vaciar alertas
+    clearBtn.addEventListener('click', () => {
+        NOTI_ALERTAS = [];
+        renderAlerts();
+    });
+
+    // Iniciar renderizado base
+    renderAlerts();
+
+    // Simulador dinámico en tiempo real cada 7 segundos (Opcional - Demostración)
+    setInterval(() => {
+        if (AppState.token) {
+            const nuevasOpciones = [
+                { id: Date.now(), icono: '🔵', titulo: 'Alumbrado', desc: 'Se asignó cuadrilla técnica al Sector Central.', tiempo: 'Ahora mismo' },
+                { id: Date.now(), icono: '🟢', titulo: 'Caso Resuelto', desc: 'Limpieza de escombros completada en Periférico.', tiempo: 'Ahora mismo' }
+            ];
+            NOTI_ALERTAS.unshift(nuevasOpciones[Math.floor(Math.random() * nuevasOpciones.length)]);
+            if (NOTI_ALERTAS.length > 5) NOTI_ALERTAS.pop(); // Mantener caché pequeño
+            renderAlerts();
+        }
+    }, 7000);
+}
+
+// ==========================================
+// 🛡️ MÓDULO DE AUTENTICACIÓN LOGIC
+// ==========================================
+function initAuthEventListeners() {
+    const linkToggle = document.getElementById('linkSwitchRegister');
+    if (!linkToggle) return;
+
+    // El listener del envío del formulario auth se mantiene unificado aquí
+    document.getElementById('formAuth').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const correo = document.getElementById('authCorreo').value;
+        const password = document.getElementById('authPassword').value;
+        const endpoint = AppState.isRegisterMode ? '/auth/register' : '/auth/login';
+        
+        let bodyData = { correo, password };
+        if (AppState.isRegisterMode) bodyData.nombre = document.getElementById('authNombre').value;
+
+        try {
+            const response = await fetch(API_BASE + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            });
+            
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Error en la operación.');
+
+            if (AppState.isRegisterMode) {
+                displayAlert('Registro completado. Por favor, inicie sesión.');
+                document.getElementById('linkSwitchRegister').click(); 
+            } else {
+                localStorage.setItem('token', result.data.token);
+                localStorage.setItem('user', JSON.stringify(result.data.user));
+                AppState.token = result.data.token;
+                AppState.user = result.data.user;
+                
+                renderNavbar();
+                displayAlert('Autenticación correcta. Bienvenido al panel urbano.');
+                switchView('viewDashboard');
+            }
+            document.getElementById('formAuth').reset();
+        } catch (err) {
+            displayAlert(err.message, 'error');
+        }
+    });
+}
+
+function handleLogout() {
+    localStorage.clear();
+    AppState.token = null;
+    AppState.user = null;
+    renderNavbar();
+    switchView('viewAuth');
+    displayAlert('Sesión cerrada correctamente.');
+}
+
+// ==========================================
+// 📡 MÓDULO DE GEOLOCALIZACIÓN NATIVA
+// ==========================================
+function initializeGeolocation() {
+    const box = document.getElementById('geoStatusBox');
+    const title = document.getElementById('geoTitle');
+    const coordsSpan = document.getElementById('geoCoords');
+    const icon = document.getElementById('geoIcon');
+    const btnSubmit = document.getElementById('btnReportarSubmit');
+
+    if (!box) return;
+
+    if (!navigator.geolocation) {
+        box.className = 'bg-red-50 border border-dashed border-red-300 rounded-lg p-4 mb-6 flex items-center gap-3';
+        icon.className = 'ti ti-gps text-2xl text-red-600';
+        title.innerText = 'Sensor Incompatible';
+        coordsSpan.innerText = 'Tu navegador no soporta la API de Geolocalización de HTML5.';
+        return;
+    }
+
+    box.className = 'bg-amber-50 border border-dashed border-amber-300 rounded-lg p-4 mb-6 flex items-center gap-3';
+    icon.className = 'ti ti-gps text-2xl text-amber-600 animate-pulse-fast';
+    title.innerText = 'Adquiriendo Coordenadas GPS...';
+    coordsSpan.innerText = 'Buscando satélites de posicionamiento en El Alto...';
+    btnSubmit.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            document.getElementById('incLatitud').value = lat;
+            document.getElementById('incLongitud').value = lng;
+
+            box.className = 'bg-green-50 border border-dashed border-green-300 rounded-lg p-4 mb-6 flex items-center gap-3';
+            icon.className = 'ti ti-gps text-2xl text-green-600';
+            title.innerText = 'Ubicación Satelital Fijada';
+            coordsSpan.innerText = `Latitud: ${lat.toFixed(6)} | Longitud: ${lng.toFixed(6)} (Precisión: ${position.coords.accuracy.toFixed(1)}m)`;
+            btnSubmit.disabled = false;
+        },
+        (error) => {
+            box.className = 'bg-red-50 border border-dashed border-red-300 rounded-lg p-4 mb-6 flex items-center gap-3';
+            icon.className = 'ti ti-gps text-2xl text-red-600';
+            title.innerText = 'Fallo del Sensor GPS';
+            btnSubmit.disabled = true;
+            coordsSpan.innerText = error.code === error.PERMISSION_DENIED 
+                ? "Acceso denegado. Debes otorgar permisos de GPS para reportar."
+                : "No se logró capturar la ubicación física actual.";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+// ==========================================
+// ⚙️ GESTIÓN OPERATIVA DE DATOS
+// ==========================================
+function initIncidentFormListener() {
+    const formIncidencia = document.getElementById('formIncidencia');
+    if (!formIncidencia) return;
+
+    formIncidencia.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(formIncidencia);
+
+        try {
+            const response = await fetch(API_BASE + '/incidencias', {
+                method: 'POST',
+                headers: { 'Authorization': AppState.token },
+                body: formData 
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Error al procesar subida.');
+
+            displayAlert('Incidencia subida y asignada al ' + result.data.sector);
+            formIncidencia.reset();
+            switchView('viewDashboard');
+        } catch (err) {
+            displayAlert(err.message, 'error');
+        }
+    });
+}
+
+async function loadAdminDashboard() {
+    try {
+        const response = await fetch(API_BASE + '/incidencias', {
+            method: 'GET',
+            headers: { 'Authorization': AppState.token }
+        });
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Guardamos en memoria limpia para el motor de filtrado instantáneo
+            BACKEND_INCIDENCIAS_CACHE = result.data || [];
+            renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
+        } else {
+            // Si falla el servidor, se inyecta una maqueta vacía controlada
+            BACKEND_INCIDENCIAS_CACHE = [];
+            renderMetricsAndIncidencias([]);
+        }
+    } catch (err) {
+        console.error("Error cargando incidencias reales, inicializando espacio limpio:", err);
+        renderMetricsAndIncidencias([]);
+    }
+}
+
+async function updateStatus(id, nuevoEstado) {
+    try {
+        const response = await fetch(`${API_BASE}/incidencias/${id}/estado`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': AppState.token
+            },
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'No se pudo actualizar el estado.');
+
+        displayAlert(`Incidencia #${id} actualizada con éxito a: ${nuevoEstado}`);
+        loadAdminDashboard(); 
+    } catch (err) {
+        displayAlert(err.message, 'error');
+    }
+}
