@@ -41,7 +41,14 @@ function initCiudadanoNavigation() {
             viewReportar.classList.remove('hidden');
             
             // 📡 RECIÉN AQUÍ inicializamos el GPS cuando el usuario lo necesita
-            initializeGeolocation();
+            capturarUbicacion({
+                boxId: 'geoStatusBox',
+                titleId: 'geoTitle',
+                coordsId: 'geoCoords',
+                btnSubmitId: 'btnReportarSubmit',
+                latInputId: 'incLatitud',
+                lngInputId: 'incLongitud'
+            });
         });
     }
 
@@ -57,51 +64,8 @@ function initCiudadanoNavigation() {
 // ==========================================
 // 📡 MÓDULO DE GEOLOCALIZACIÓN NATIVA
 // ==========================================
-function initializeGeolocation() {
-    const box = document.getElementById('geoStatusBox');
-    const title = document.getElementById('geoTitle');
-    const coordsSpan = document.getElementById('geoCoords');
-    const btnSubmit = document.getElementById('btnReportarSubmit');
+// ya en utils.js
 
-    if (!box) return;
-
-    if (!navigator.geolocation) {
-        box.className = 'bg-red-50 border border-dashed border-red-300 rounded-lg p-4 mb-6';
-        if (title) title.innerText = 'Sensor Incompatible';
-        if (coordsSpan) coordsSpan.innerText = 'Tu navegador no soporta la API de Geolocalización.';
-        return;
-    }
-
-    // Mostrar estado de carga amigable
-    box.className = 'bg-amber-50 border border-dashed border-amber-300 rounded-lg p-4 mb-6';
-    if (title) title.innerText = 'Adquiriendo Coordenadas GPS...';
-    if (coordsSpan) coordsSpan.innerText = 'Buscando satélites de posicionamiento...';
-    if (btnSubmit) btnSubmit.disabled = true;
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            
-            document.getElementById('incLatitud').value = lat;
-            document.getElementById('incLongitud').value = lng;
-
-            box.className = 'bg-green-50 border border-dashed border-green-300 rounded-lg p-4 mb-6';
-            if (title) title.innerText = 'Ubicación Satelital Fijada';
-            if (coordsSpan) coordsSpan.innerText = `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)} (Precisión: ${position.coords.accuracy.toFixed(1)}m)`;
-            if (btnSubmit) btnSubmit.disabled = false;
-        },
-        (error) => {
-            box.className = 'bg-red-50 border border-dashed border-red-300 rounded-lg p-4 mb-6';
-            if (title) title.innerText = 'Fallo del Sensor GPS';
-            if (btnSubmit) btnSubmit.disabled = true;
-            if (coordsSpan) coordsSpan.innerText = error.code === error.PERMISSION_DENIED 
-                ? "Acceso denegado. Activa los permisos de ubicación en tu navegador."
-                : "No se logró capturar la ubicación física actual.";
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
-}
 
 // ==========================================
 // ⚙️ ENVÍO DE DATOS
@@ -198,8 +162,8 @@ function renderListadosVecino(incidencias) {
 }
 
 // Helper para armar tarjetas compactas y estéticas sin selectores de edición
+// Helper para armar tarjetas compactas y estéticas sin selectores de edición
 function generarTarjetaVecino(inc, esPropio) {
-    console.log("🔍 [DEBUG] Procesando ID:", inc.id, " | Estado:", inc.estado);
 
     // 🎨 1. Cambios dinámicos de color según el estado
     let bgTarjeta = 'bg-white border-slate-200';
@@ -220,10 +184,8 @@ function generarTarjetaVecino(inc, esPropio) {
         if (fotoQueja.startsWith('http')) {
             urlFoto = fotoQueja;
         } else if (fotoQueja.startsWith('uploads/')) {
-            // Si ya trae "uploads/", usamos la URL base limpia (http://localhost:8000/uploads/...)
             urlFoto = FILE_SERVER + fotoQueja; 
         } else {
-            // Por si acaso algunas filas no lo traigan
             urlFoto = FILE_SERVER + 'uploads/' + fotoQueja;
         }
     }
@@ -237,19 +199,25 @@ function generarTarjetaVecino(inc, esPropio) {
     let botonEvidencia = '';
     
     if (esResuelta) {
-        // Si es null o vacío, mandamos un string vacío limpio
         const fotoCierreSegura = (inc.foto_cierre && inc.foto_cierre !== 'null') ? inc.foto_cierre : '';
         const notaLimpia = inc.nota_cierre ? inc.nota_cierre.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '¡Reporte solucionado con éxito por la administración!';
         
         botonEvidencia = `<button onclick="verEvidenciaCierre('${fotoCierreSegura}', '${notaLimpia}')" class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md hover:bg-emerald-200 transition-colors ml-2">📸 Ver Solución</button>`;
     }
 
+    // 🔥 5. AQUÍ ESTÁ LA CORRECCIÓN: Escapamos los textos para evitar el ReferenceError
+    const tituloEscapado = inc.titulo ? inc.titulo.replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'Incidencia Vecinal';
+    const descEscapada = inc.descripcion ? inc.descripcion.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+    const sectorEscapado = inc.sector ? inc.sector.replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'General';
+
+    // 6. Retornamos la plantilla integrada
     return `
-        <div class="flex rounded-xl border shadow-sm overflow-hidden min-h-[80px] transition-all ${bgTarjeta}">
+        <div class="flex rounded-xl border shadow-sm overflow-hidden min-h-[85px] transition-all ${bgTarjeta}">
             <div class="w-20 h-auto bg-slate-100 flex-shrink-0 relative">
                 <img src="${urlFoto}" alt="Evidencia" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150'">
                 ${esResuelta ? `<div class="absolute inset-0 bg-emerald-950/20 flex items-center justify-center"><i class="ti ti-circle-check text-white text-xl drop-shadow"></i></div>` : ''}
             </div>
+            
             <div class="p-3 flex-1 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-center mb-1 gap-2">
@@ -266,7 +234,15 @@ function generarTarjetaVecino(inc, esPropio) {
                         <span>${fechaFormateada}</span>
                         ${botonEvidencia} 
                     </div>
-                    ${esPropio ? `<span class="text-blue-600 font-bold text-[9px] bg-blue-50 px-1.5 py-0.5 rounded flex-shrink-0">Tu reporte</span>` : ''}
+                    
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        ${esPropio ? `<span class="text-blue-600 font-bold text-[9px] bg-blue-50 px-1.5 py-0.5 rounded">Tu reporte</span>` : ''}
+                        
+                        <button onclick="abrirModalDetalleIncidencia('${inc.id}', '${tituloEscapado}', '${descEscapada}', '${urlFoto}', '${inc.estado}', '${sectorEscapado}', '${inc.urgencia || 'Media'}', '${inc.latitud}', '${inc.longitud}')" 
+                                class="text-[9px] bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white px-2 py-0.5 rounded font-bold transition-colors border border-slate-200 hover:border-blue-600 cursor-pointer">
+                            Ver reporte
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

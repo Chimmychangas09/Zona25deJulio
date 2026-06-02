@@ -166,73 +166,73 @@ $lng = (float)$data['longitud'];
      * Endpoint: PUT /api/incidencias/{id}/estado (EXCLUSIVO ADMINISTRADORES + AUDITORÍA INDELEBLE)
      */
     public function actualizarEstado(Request $request, Response $response, array $args): Response
-{
-    $idIncidencia = $args['id'];
-    $data = $request->getParsedBody();
-    $adminId = $request->getAttribute('usuario_id');
+    {
+        $idIncidencia = $args['id'];
+        $data = $request->getParsedBody();
+        $adminId = $request->getAttribute('usuario_id');
 
-    if (empty($data['estado'])) {
-        throw new RuntimeException("El nuevo estado es requerido.", 400);
+        if (empty($data['estado'])) {
+            throw new RuntimeException("El nuevo estado es requerido.", 400);
+        }
+
+        $nuevoEstado = trim($data['estado']);
+        
+        // 🟢 NUEVAS REGLAS: Cambiamos 'Resuelto' por 'Resuelta' y añadimos 'Rechazada'
+        $estadosPermitidos = ['Pendiente', 'En Proceso', 'Resuelta', 'Rechazada'];
+
+        if (!in_array($nuevoEstado, $estadosPermitidos)) {
+            throw new RuntimeException("El estado suministrado no pertenece al flujo operativo válido.", 422);
+        }
+
+        $db = Connection::getConnection();
+
+        // 1. Obtener estado actual para la auditoría
+        $stmtCheck = $db->prepare("SELECT estado FROM incidencias WHERE id = ?");
+        $stmtCheck->execute([$idIncidencia]);
+        $incidencia = $stmtCheck->fetch();
+
+        if (!$incidencia) {
+            throw new RuntimeException("La incidencia solicitada no existe en los registros.", 404);
+        }
+
+        $estadoAnterior = $incidencia['estado'];
+
+        try {
+            // Iniciar Transacción Atómica para asegurar consistencia absoluta
+            $db->beginTransaction();
+
+            // 2. Actualizar el estado de la incidencia
+            $stmtUpdate = $db->prepare("UPDATE incidencias SET estado = ? WHERE id = ?");
+            $stmtUpdate->execute([$nuevoEstado, $idIncidencia]);
+
+            // 3. Escribir bitácora indeleble en tu tabla 'auditoria_estados'
+            $stmtLog = $db->prepare("
+                INSERT INTO auditoria_estados (incidencia_id, estado_anterior, estado_nuevo, administrador_id) 
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmtLog->execute([$idIncidencia, $estadoAnterior, $nuevoEstado, $adminId]);
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollBack();
+            throw new RuntimeException("Fallo en la operación atómica de actualización de estado.", 500);
+        }
+
+        // 🕵️‍♂️ Personalizar el mensaje de respuesta si es una reapertura para feedback del frontend
+        $esReapertura = ($estadoAnterior === 'Resuelta' || $estadoAnterior === 'Rechazada') && 
+                        ($nuevoEstado === 'Pendiente' || $nuevoEstado === 'En Proceso');
+
+        $mensajeFinal = $esReapertura 
+            ? "🔄 ¡Alerta de Reapertura! La incidencia #{$idIncidencia} ha sido reabierta con éxito y regresó al tablero activo."
+            : "Estado actualizado exitosamente de '{$estadoAnterior}' a '{$nuevoEstado}' con registro de auditoría.";
+
+        $response->getBody()->write(json_encode([
+            'status' => 'success',
+            'message' => $mensajeFinal
+        ]));
+        
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
     }
-
-    $nuevoEstado = trim($data['estado']);
-    
-    // 🟢 NUEVAS REGLAS: Cambiamos 'Resuelto' por 'Resuelta' y añadimos 'Rechazada'
-    $estadosPermitidos = ['Pendiente', 'En Proceso', 'Resuelta', 'Rechazada'];
-
-    if (!in_array($nuevoEstado, $estadosPermitidos)) {
-        throw new RuntimeException("El estado suministrado no pertenece al flujo operativo válido.", 422);
-    }
-
-    $db = Connection::getConnection();
-
-    // 1. Obtener estado actual para la auditoría
-    $stmtCheck = $db->prepare("SELECT estado FROM incidencias WHERE id = ?");
-    $stmtCheck->execute([$idIncidencia]);
-    $incidencia = $stmtCheck->fetch();
-
-    if (!$incidencia) {
-        throw new RuntimeException("La incidencia solicitada no existe en los registros.", 404);
-    }
-
-    $estadoAnterior = $incidencia['estado'];
-
-    try {
-        // Iniciar Transacción Atómica para asegurar consistencia absoluta
-        $db->beginTransaction();
-
-        // 2. Actualizar el estado de la incidencia
-        $stmtUpdate = $db->prepare("UPDATE incidencias SET estado = ? WHERE id = ?");
-        $stmtUpdate->execute([$nuevoEstado, $idIncidencia]);
-
-        // 3. Escribir bitácora indeleble en tu tabla 'auditoria_estados'
-        $stmtLog = $db->prepare("
-            INSERT INTO auditoria_estados (incidencia_id, estado_anterior, estado_nuevo, administrador_id) 
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmtLog->execute([$idIncidencia, $estadoAnterior, $nuevoEstado, $adminId]);
-
-        $db->commit();
-    } catch (\Exception $e) {
-        $db->rollBack();
-        throw new RuntimeException("Fallo en la operación atómica de actualización de estado.", 500);
-    }
-
-    // 🕵️‍♂️ Personalizar el mensaje de respuesta si es una reapertura para feedback del frontend
-    $esReapertura = ($estadoAnterior === 'Resuelta' || $estadoAnterior === 'Rechazada') && 
-                    ($nuevoEstado === 'Pendiente' || $nuevoEstado === 'En Proceso');
-
-    $mensajeFinal = $esReapertura 
-        ? "🔄 ¡Alerta de Reapertura! La incidencia #{$idIncidencia} ha sido reabierta con éxito y regresó al tablero activo."
-        : "Estado actualizado exitosamente de '{$estadoAnterior}' a '{$nuevoEstado}' con registro de auditoría.";
-
-    $response->getBody()->write(json_encode([
-        'status' => 'success',
-        'message' => $mensajeFinal
-    ]));
-    
-    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-}
 
    public function obtenerAuditoria($request, $response, $args) {
     try {

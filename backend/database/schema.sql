@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS auditoria_usuarios (
     FOREIGN KEY (usuario_afectado_id) REFERENCES usuarios(id)
 );
 
+
 -- Índices estratégicos para optimizar búsquedas por geolocalización y estados
 CREATE INDEX IF NOT EXISTS idx_incidencias_coordenadas ON incidencias(latitud, longitud);
 CREATE INDEX IF NOT EXISTS idx_incidencias_estado ON incidencias(estado);

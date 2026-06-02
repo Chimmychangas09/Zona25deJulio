@@ -74,17 +74,18 @@ class AuthController
 
         $db = Connection::getConnection();
 
-        // Buscar el usuario y amalgamar su rol correspondiente
+        // 🕵️‍♂️ CORRECCIÓN AQUÍ: Añadimos "AND u.eliminado_en IS NULL"
         $stmt = $db->prepare("
             SELECT u.*, r.nombre as rol_nombre 
             FROM usuarios u 
             JOIN roles r ON u.rol_id = r.id 
-            WHERE u.correo = ?
+            WHERE u.correo = ? AND u.eliminado_en IS NULL
         ");
         $stmt->execute([strtolower(trim($data['correo']))]);
         $user = $stmt->fetch();
 
         // Verificación de tiempo constante contra ataques de sincronización temporizada
+        // Si el usuario fue eliminado, $user será false, y disparará el 401 automáticamente.
         if (!$user || !password_verify($data['password'], $user['password'])) {
             throw new RuntimeException("Las credenciales de acceso son incorrectas o inexistentes.", 401);
         }

@@ -65,8 +65,19 @@ async function loadAdminDashboard() {
         
         if (response.ok) {
             BACKEND_INCIDENCIAS_CACHE = result.data || [];
-            renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
+            
+            // 🚀 EL CAMBIO CLAVE: En vez de renderizar directo, inicializamos el sistema de filtros.
+            // Como pusimos 'filtrarCache()' al final de initFilterSystem, esta leerá el "ACTIVAS" 
+            // del HTML y filtrará la lista al instante, encargándose también de llamar a renderMetricsAndIncidencias.
+            initFilterSystem();
+            
+            // Este se mantiene porque dibuja los sectores críticos de forma independiente
             renderSectoresCriticos(BACKEND_INCIDENCIAS_CACHE);
+            
+            // 🗺️ Corrección de llaves: Validamos e inicializamos el mapa de calor dentro del flujo correcto
+            if (typeof inicializarMapaCalor === 'function') {
+                inicializarMapaCalor(BACKEND_INCIDENCIAS_CACHE);
+            }
         } else {
             clearDashboard();
         }
@@ -76,134 +87,172 @@ async function loadAdminDashboard() {
     }
 }
 
-function renderMetricsAndIncidencias(incidencias) {
+// 1. FUNCIÓN PRINCIPAL: Controla métricas y el contenedor general
+function renderMetricsAndIncidencias(todasLasIncidencias, incidenciasParaMostrar) {
     const listContainer = document.getElementById('adminIncidenciasList');
     if (!listContainer) return;
 
-    // 1. Calcular y renderizar métricas en tiempo real en base a los nuevos estados
-    if (document.getElementById('countPendientes')) {
-        document.getElementById('countPendientes').innerText = incidencias.filter(i => i.estado === 'Pendiente').length;
-    }
-    if (document.getElementById('countProceso')) {
-        document.getElementById('countProceso').innerText = incidencias.filter(i => i.estado === 'En Proceso').length;
-    }
-    // Ajustado a la consistencia gramatical 'Resuelta'
-    if (document.getElementById('countResueltas')) {
-        document.getElementById('countResueltas').innerText = incidencias.filter(i => i.estado === 'Resuelta' || i.estado === 'Resuelto').length;
-    }
-    if (document.getElementById('countRechazadas')) {
-        document.getElementById('countRechazadas').innerText = incidencias.filter(i => i.estado === 'Rechazada').length;
-    }
+    // 📊 1. LAS MÉTRICAS DEBEN USAR TODO EL ARREGLO HISTÓRICO
+    // De esta manera, los contadores de arriba reflejan el universo total real.
+    actualizarContadoresMetricas(todasLasIncidencias);
 
-    if (incidencias.length === 0) {
-        listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">No se encontraron incidencias.</p>`;
+    // 📋 2. VALIDAR SI LA LISTA A MOSTRAR VIENE VACÍA
+    // Esto ocurre si el filtro aplicado no encuentra ninguna coincidencia abajo.
+    if (!incidenciasParaMostrar || incidenciasParaMostrar.length === 0) {
+        listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">No se encontraron incidencias para este filtro.</p>`;
         return;
     }
 
-    // 2. Mapeo estructural de tarjetas
-    listContainer.innerHTML = incidencias.map(inc => {
-        let colorEstado = 'border-l-red-500';
-        let badgeEstado = 'bg-red-100 text-red-700';
+    // 🖨️ 3. RENDERIZAR SOLO LO FILTRADO
+    // Mapeo limpio llamando a la constructora de tarjetas individuales.
+    listContainer.innerHTML = incidenciasParaMostrar.map(inc => crearTarjetaIncidenciaHtml(inc)).join('');
+}
 
-        if (inc.estado === 'En Proceso') {
-            colorEstado = 'border-l-amber-500';
-            badgeEstado = 'bg-amber-100 text-amber-700';
-        } else if (inc.estado === 'Resuelta' || inc.estado === 'Resuelto') {
-            colorEstado = 'border-l-green-500';
-            badgeEstado = 'bg-green-100 text-green-700';
-        } else if (inc.estado === 'Rechazada') {
-            colorEstado = 'border-l-slate-400';
-            badgeEstado = 'bg-slate-100 text-slate-600';
-        }
+// 2. SUB-FUNCIÓN: Se encarga exclusivamente de calcular los contadores numéricos
+function actualizarContadoresMetricas(incidencias) {
+    const counts = {
+        Pendientes: document.getElementById('countPendientes'),
+        Proceso: document.getElementById('countProceso'),
+        Resueltas: document.getElementById('countResueltas'),
+        Rechazadas: document.getElementById('countRechazadas')
+    };
 
-        // 📸 CORRECCIÓN DE COLUMNA Y CONTROL DE RUTAS INTELIGENTE
-        const fotoQueja = inc.foto_url; // 👈 Cambiado de inc.foto a inc.foto_url
-        let urlFoto = 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150'; // Respaldo
+    if (counts.Pendientes) {
+        counts.Pendientes.innerText = incidencias.filter(i => (i.estado || '').toLowerCase() === 'pendiente').length;
+    }
+    if (counts.Proceso) {
+        counts.Proceso.innerText = incidencias.filter(i => (i.estado || '').toLowerCase() === 'en proceso').length;
+    }
+    if (counts.Resueltas) {
+        // 🔥 Aquí queda totalmente blindado contra 'Resuelta', 'Resuelto', 'resuelto', 'RESUELTA', etc.
+        counts.Resueltas.innerText = incidencias.filter(i => {
+            const est = (i.estado || '').toLowerCase();
+            return est === 'resuelta' || est === 'resuelto';
+        }).length;
+    }
+    if (counts.Rechazadas) {
+        counts.Rechazadas.innerText = incidencias.filter(i => (i.estado || '').toLowerCase() === 'rechazada').length;
+    }
+}
 
-        if (fotoQueja && fotoQueja !== 'null' && fotoQueja !== 'undefined' && fotoQueja.trim() !== '') {
-            if (fotoQueja.startsWith('http')) {
-                urlFoto = fotoQueja;
-            } else if (fotoQueja.startsWith('uploads/')) {
-                // Como tu FILE_SERVER es 'http://localhost:8000/', esto evita duplicar el "uploads/"
-                urlFoto = FILE_SERVER + fotoQueja; 
-            } else {
-                urlFoto = FILE_SERVER + 'uploads/' + fotoQueja;
-            }
-        }
+// 3. SUB-FUNCIÓN: Contiene toda la plantilla HTML y lógica de estilos por tarjeta
+function crearTarjetaIncidenciaHtml(inc) {
+    // Definir estilos visuales según el estado
+    let colorEstado = 'border-l-red-500';
+    let badgeEstado = 'bg-red-500/20 text-red-400 border border-red-500/30';
+    const esCasoCerrado = inc.estado === 'Resuelta' || inc.estado === 'Resuelto' || inc.estado === 'Rechazada';
 
-        // 🪄 3. INTERRUPTOR DE ACCIÓN MODIFICADO: Selector de estado vs Botones de Cierre/Reapertura
-        let controlAccionHtml = '';
-        
-        if (inc.estado === 'Resuelta' || inc.estado === 'Resuelto' || inc.estado === 'Rechazada') {
-            // Si está cerrado, además de reabrir, le permitimos VER y EDITAR la solución si está Resuelta
-            let botonEditarSolucion = '';
-            
-            if (inc.estado === 'Resuelta' || inc.estado === 'Resuelto') {
-                const notaEscapada = inc.nota_cierre ? inc.nota_cierre.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
-                botonEditarSolucion = `
-                    <button onclick="abrirModalEditarSolucion('${inc.id}', '${inc.foto_cierre}', '${notaEscapada}')" 
-                            class="p-1 px-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[9px] font-bold flex items-center gap-1 transition-all border border-emerald-200"
-                            title="Ver o editar la evidencia de cierre">
-                        <i class="ti ti-edit"></i> Ver/Editar Solución
-                    </button>
-                `;
-            }
+    if (inc.estado === 'En Proceso') {
+        colorEstado = 'border-l-amber-500';
+        badgeEstado = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    } else if (inc.estado === 'Resuelta' || inc.estado === 'Resuelto') {
+        colorEstado = 'border-l-green-500';
+        badgeEstado = 'bg-green-500/20 text-green-400 border border-green-500/30';
+    } else if (inc.estado === 'Rechazada') {
+        colorEstado = 'border-l-slate-500';
+        badgeEstado = 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+    }
 
-            controlAccionHtml = `
-                <div class="flex gap-1">
-                    ${botonEditarSolucion}
-                    <button onclick="updateStatus('${inc.id}', 'En Proceso')" 
-                            class="p-1 px-2 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[9px] font-bold flex items-center gap-1 transition-all border border-amber-200"
-                            title="Devolver incidencia a estado En Proceso">
-                        <i class="ti ti-arrow-back-up"></i> Reabrir Caso
-                    </button>
-                </div>
-            `;
+    // Formatear la URL de la imagen de evidencia
+    const fotoQueja = inc.foto_url;
+    let urlFoto = 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150'; // Respaldo
+
+    if (fotoQueja && fotoQueja !== 'null' && fotoQueja !== 'undefined' && fotoQueja.trim() !== '') {
+        if (fotoQueja.startsWith('http')) {
+            urlFoto = fotoQueja;
+        } else if (fotoQueja.startsWith('uploads/')) {
+            urlFoto = FILE_SERVER + fotoQueja; 
         } else {
-            controlAccionHtml = `
-                <select onchange="updateStatus('${inc.id}', this.value)" class="p-1 text-[10px] bg-slate-50 border border-slate-200 rounded cursor-pointer outline-none font-medium focus:border-blue-600">
-                    <option value="Pendiente" ${inc.estado === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                    <option value="En Proceso" ${inc.estado === 'En Proceso' ? 'selected' : ''}>⚙️ En Proceso</option>
-                    <option value="Resuelta" ${(inc.estado === 'Resuelta' || inc.estado === 'Resuelto') ? 'selected' : ''}>✅ Resuelta</option>
-                    <option value="Rechazada" ${inc.estado === 'Rechazada' ? 'selected' : ''}>❌ Rechazada</option>
-                </select>
+            urlFoto = FILE_SERVER + 'uploads/' + fotoQueja;
+        }
+    }
+
+    // Generar bloque de acciones/controles dinámicos
+    let controlAccionHtml = '';
+    if (esCasoCerrado) {
+        let botonEditarSolucion = '';
+        if (inc.estado === 'Resuelta' || inc.estado === 'Resuelto') {
+            const notaEscapada = inc.nota_cierre ? inc.nota_cierre.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+            botonEditarSolucion = `
+                <button type="button" onclick="abrirModalEditarSolucion('${inc.id}', '${inc.foto_cierre}', '${notaEscapada}')" 
+                        class="p-1 px-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded text-[9px] font-bold flex items-center gap-1 transition-all border border-emerald-500/30"
+                        title="Ver o editar la evidencia de cierre">
+                    <i class="ti ti-edit"></i> Ver/Editar Solución
+                </button>
             `;
         }
 
-        // 🖨️ Agregamos también un control 'onerror' a la imagen por si el archivo físico fuese borrado en el disco duro
-        return `
-            <div class="flex bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden border-l-4 ${colorEstado}">
-                <div class="w-28 sm:w-36 h-auto min-h-[110px] bg-slate-100 flex-shrink-0">
-                    <img src="${urlFoto}" alt="Evidencia" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150'">
-                </div>
-                <div class="p-3.5 flex-1 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start gap-2 mb-1">
-                            <span class="text-[10px] uppercase font-bold tracking-tight bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${inc.tipo_danio || 'Urbano'}</span>
-                            <span class="text-[10px] font-semibold ${badgeEstado} px-2 py-0.5 rounded-full">${inc.estado}</span>
-                        </div>
-                        <p class="text-xs text-slate-600 line-clamp-2">${inc.descripcion}</p>
+        controlAccionHtml = `
+            <div class="flex gap-1">
+                ${botonEditarSolucion}
+                <button type="button" onclick="updateStatus('${inc.id}', 'En Proceso')" 
+                        class="p-1 px-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded text-[9px] font-bold flex items-center gap-1 transition-all border border-amber-500/30"
+                        title="Devolver incidencia a estado En Proceso">
+                    <i class="ti ti-arrow-back-up"></i> Reabrir Caso
+                </button>
+            </div>
+        `;
+    } else {
+        // Los elementos <select> no sufren de este problema nativo, están perfectos
+        controlAccionHtml = `
+            <select onchange="event.preventDefault(); event.stopPropagation(); updateStatus('${inc.id}', this.value, this); return false;" 
+                    class="p-1 text-[10px] bg-slate-900 border border-slate-700 text-slate-300 rounded cursor-pointer outline-none font-medium focus:border-blue-500">
+                <option value="Pendiente" ${inc.estado === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                <option value="En Proceso" ${inc.estado === 'En Proceso' ? 'selected' : ''}>⚙️ En Proceso</option>
+                <option value="Resuelta" ${(inc.estado === 'Resuelta' || inc.estado === 'Resuelto') ? 'selected' : ''}>✅ Resuelta</option>
+                <option value="Rechazada" ${inc.estado === 'Rechazada' ? 'selected' : ''}>❌ Rechazada</option>
+            </select>
+        `;
+    }
+
+    // Escapamos los textos de la incidencia para poder pasarlos de forma segura dentro del onclick del botón
+    const tituloEscapado = inc.titulo ? inc.titulo.replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'Incidencia';
+    const descEscapada = inc.descripcion ? inc.descripcion.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+    const sectorEscapado = inc.sector ? inc.sector.replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'Desconocido';
+
+    return `
+        <div id="incidencia-row-${inc.id}" class="flex bg-slate-800 rounded-lg border border-slate-700 shadow-sm overflow-hidden border-l-4 ${colorEstado} transition-all duration-300">
+            <div class="w-28 sm:w-36 h-auto min-h-[110px] bg-slate-900 flex-shrink-0">
+                <img src="${urlFoto}" alt="Evidencia" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150'">
+            </div>
+            <div class="p-3.5 flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-start gap-2 mb-1">
+                        <span class="text-[10px] uppercase font-bold tracking-tight bg-slate-700 text-slate-300 px-2 py-0.5 rounded">${inc.tipo_danio || 'Urbano'}</span>
+                        <span class="text-[10px] font-semibold ${badgeEstado} px-2 py-0.5 rounded-full">${inc.estado}</span>
                     </div>
-                    <div class="border-t border-slate-100 pt-2 mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                        <span><i class="ti ti-map-pin"></i> ${inc.sector || 'Sector Desconocido'}</span>
-                        <div class="flex items-center gap-1">
-                            ${controlAccionHtml}
-                        </div>
+                    <p class="text-xs text-slate-300 line-clamp-2">${inc.descripcion}</p>
+                </div>
+                <div class="border-t border-slate-700 pt-2 mt-2 flex items-center justify-between text-[10px] text-slate-400">
+                    <span><i class="ti ti-map-pin"></i> ${inc.sector || 'Sector Desconocido'}</span>
+                    
+                    <div class="flex items-center gap-1.5">
+                        
+                        <button onclick="abrirModalDetalleIncidencia('${inc.id}', '${tituloEscapado}', '${descEscapada}', '${urlFoto}', '${inc.estado}', '${sectorEscapado}', '${inc.urgencia || 'Media'}', '${inc.latitud}', '${inc.longitud}')" 
+                                class="p-1 px-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded text-[9px] font-bold flex items-center gap-1 transition-all border border-blue-500/30"
+                                title="Ver todos los detalles de este reporte">
+                            <i class="ti ti-eye"></i> Ver Detalle
+                        </button>
+
+                        ${controlAccionHtml}
                     </div>
                 </div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `;
 }
 
 
-async function updateStatus(id, nuevoEstado) {
-
-    if (nuevoEstado === 'Resuelta') {
+async function updateStatus(id, nuevoEstado, selectElement = null) {
+    if (nuevoEstado === 'Resuelta' || nuevoEstado === 'Resuelto') {
         document.getElementById('cierreIncidenciaId').value = id;
         document.getElementById('cierreNuevoEstado').value = nuevoEstado;
+        
+        // Guardamos el select en una variable global temporal por si cancelan el modal
+        window.selectStatusActual = selectElement;
+        
         document.getElementById('modalCierreIncidencia').classList.remove('hidden');
-        return; // Detenemos la ejecución aquí
+        return false; // Evita cualquier acción nativa colateral o burbujeo
     }
 
     try {
@@ -219,22 +268,38 @@ async function updateStatus(id, nuevoEstado) {
 
         if (!response.ok) throw new Error('No se pudo actualizar el estado.');
         
-        // 💬 Mensaje inteligente según la acción ejecutada
         if (nuevoEstado === 'En Proceso') {
             displayAlert(`🔄 Caso #${id} reabierto y enviado a revisión en el tablero.`);
         } else {
             displayAlert(`Incidencia #${id} modificada con éxito a: ${nuevoEstado}`);
         }
         
-        // ⚡ OPTIMIZACIÓN CACHÉ LOCAL: (Se mantiene intacta y sin cambios)
+        // Mutamos la caché local de la SPA
         const index = BACKEND_INCIDENCIAS_CACHE.findIndex(inc => String(inc.id) === String(id));
         if (index !== -1) {
             BACKEND_INCIDENCIAS_CACHE[index].estado = nuevoEstado;
-            renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
-            renderSectoresCriticos(BACKEND_INCIDENCIAS_CACHE);
+            
+            console.log("Actualizando renderizado respetando filtros activos...");
+            
+            // 🔥 REEMPLAZADO: Llamamos a tu sistema maestro de filtros expuesto globalmente
+            if (typeof window.ejecutarFiltradoActual === 'function') {
+                window.ejecutarFiltradoActual();
+            } else {
+                // Respaldo de seguridad por si acaso
+                renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE, BACKEND_INCIDENCIAS_CACHE);
+            }
+
+            if (typeof renderSectoresCriticos === 'function') {
+                renderSectoresCriticos(BACKEND_INCIDENCIAS_CACHE);
+            }
         }
     } catch (err) {
         displayAlert(err.message, 'error');
+        
+        // Si el servidor falla, regresamos el select de la tarjeta a su estado original
+        if (selectElement && index !== -1) {
+            selectElement.value = BACKEND_INCIDENCIAS_CACHE[index].estado;
+        }
     }
 }
 
@@ -280,19 +345,54 @@ function initFilterSystem() {
             const descripcion = (inc.descripcion || '').toLowerCase();
             const tipoDanio = (inc.tipo_danio || '').toLowerCase();
 
+            // Guardamos el estado del registro actual en minúsculas para comparar fácil
+            const estadoIncidencia = (inc.estado || '').toLowerCase();
+
+            // 1. Filtro de búsqueda por texto
             const matchesSearch = descripcion.includes(query) || tipoDanio.includes(query);
+            
+            // 2. Filtro de sector
             const matchesSector = sectorSelected === 'TODOS' || inc.sector === sectorSelected;
-            const matchesEstado = estadoSelected === 'TODOS' || inc.estado === estadoSelected;
+            
+            // 3. 🛠️ FILTRO DE ESTADO ADAPTATIVO (CORREGIDO PARA ADMITIR AMBOS GÉNEROS)
+            let matchesEstado = false;
+            
+            if (estadoSelected === 'ACTIVAS') {
+                // Si está en ACTIVAS, entran las que NO están cerradas (en ninguna de sus variantes)
+                matchesEstado = estadoIncidencia !== 'resuelta' && 
+                                estadoIncidencia !== 'resuelto' && 
+                                estadoIncidencia !== 'rechazada' && 
+                                estadoIncidencia !== 'cancelada';
+            } else if (estadoSelected === 'TODOS') {
+                matchesEstado = true;
+            } else {
+                // Convertimos lo que viene del select a minúsculas
+                const opcionElegida = estadoSelected.toLowerCase();
+
+                // 🔥 SI ELIGEN "RESUELTO" O "RESUELTA", DEJAMOS PASAR AMBOS CASOS
+                if (opcionElegida === 'resuelto' || opcionElegida === 'resuelta') {
+                    matchesEstado = (estadoIncidencia === 'resuelto' || estadoIncidencia === 'resuelta');
+                } else {
+                    // Para los demás estados (Pendiente, En Proceso, etc.), comparación normal en minúsculas
+                    matchesEstado = estadoIncidencia === opcionElegida;
+                }
+            }
             
             return matchesSearch && matchesSector && matchesEstado;
         });
 
-        renderMetricsAndIncidencias(resultadoFiltrado);
+        // 4. Enviamos ambos arreglos a la función de renderizado
+        renderMetricsAndIncidencias(listaAFiltrar, resultadoFiltrado);
     };
 
+    // Escuchadores de eventos para reaccionar en tiempo real
     searchInput.addEventListener('input', filtrarCache);
     sectorSelect.addEventListener('change', filtrarCache);
     estadoSelect.addEventListener('change', filtrarCache);
+
+    window.ejecutarFiltradoActual = filtrarCache;
+    
+    filtrarCache();
 }
 
 function initNotificationBell() {
@@ -656,7 +756,21 @@ function initReporteAdminModal() {
         };
     }
 
-    btnAbrir.onclick = () => modal.classList.remove('hidden');
+            // AHORA QUEDARÁ ASÍ(geolocalizacion):
+        btnAbrir.onclick = () => {
+            // 1. Abre el modal
+            modal.classList.remove('hidden');
+            
+            // 2. Activa el GPS inyectando los IDs que usarás en el HTML del Admin
+            capturarUbicacion({
+                boxId: 'adminGeoStatusBox',
+                titleId: 'adminGeoTitle',
+                coordsId: 'adminGeoCoords',
+                btnSubmitId: 'btnReportarAdminSubmit', // <-- Cambia esto por el ID real de tu botón
+                latInputId: 'adminIncLatitud',
+                lngInputId: 'adminIncLongitud'
+            });
+        };
     
     const cerrarModal = () => {
         form.reset();
@@ -947,26 +1061,31 @@ async function eliminarUsuarioId(id) {
 function cerrarModalCierre() {
     document.getElementById('formCierreIncidencia').reset();
     document.getElementById('modalCierreIncidencia').classList.add('hidden');
-    // Forzar re-renderizado para regresar el select a su posición si canceló
-    renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
+    
+    // Si guardamos el select original, lo regresamos a su estado real en la caché
+    if (window.selectStatusActual) {
+        const id = document.getElementById('cierreIncidenciaId').value;
+        const caso = BACKEND_INCIDENCIAS_CACHE.find(inc => String(inc.id) === String(id));
+        if (caso) {
+            window.selectStatusActual.value = caso.estado;
+        }
+        window.selectStatusActual = null;
+    }
 }
 
-// Procesar el cierre oficial con foto y nota
 document.getElementById('formCierreIncidencia').onsubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Corta el burbujeo de eventos en seco
 
     const id = document.getElementById('cierreIncidenciaId').value;
     const nuevoEstado = document.getElementById('cierreNuevoEstado').value;
     const form = document.getElementById('formCierreIncidencia');
 
-    // Construimos el paquete multimedia
     const formData = new FormData(form);
-    formData.append('estado', nuevoEstado); // Agregamos el estado 'Resuelta'
+    formData.append('estado', nuevoEstado); 
 
     try {
         const token = localStorage.getItem('token');
-        
-        // Enviamos al backend por POST/PUT (usaremos POST debido a la carga confiable de archivos en PHP)
         const response = await fetch(`${API_BASE}/incidencias/${id}/resolver`, {
             method: 'POST',
             headers: { 'Authorization': token },
@@ -976,117 +1095,97 @@ document.getElementById('formCierreIncidencia').onsubmit = async (e) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Error al resolver la incidencia.');
 
-        displayAlert(`✅ Caso #${id} cerrado oficialmente con evidencia guardada.`);
-        cerrarModalCierre();
-
-        // ⚡ Actualizar la memoria caché de inmediato para evitar recargar la página
+        // 1. Modificamos la caché primero
         const index = BACKEND_INCIDENCIAS_CACHE.findIndex(inc => String(inc.id) === String(id));
         if (index !== -1) {
             BACKEND_INCIDENCIAS_CACHE[index].estado = nuevoEstado;
-            // Inyectamos los nuevos datos en la caché por si el administrador abre detalles
             BACKEND_INCIDENCIAS_CACHE[index].foto_cierre = result.foto_cierre;
             BACKEND_INCIDENCIAS_CACHE[index].nota_cierre = document.getElementById('cierreNota').value.trim();
-            
-            renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE);
+        }
+
+        // 2. Limpiamos y cerramos la interfaz de inmediato
+        window.selectStatusActual = null;
+        cerrarModalCierre();
+        displayAlert(`✅ Caso #${id} cerrado oficialmente con evidencia guardada.`);
+
+        // 3. Forzamos renderizado manual limpio sin disparar eventos del DOM
+        renderMetricsAndIncidencias(BACKEND_INCIDENCIAS_CACHE, BACKEND_INCIDENCIAS_CACHE);
+
+        if (typeof renderSectoresCriticos === 'function') {
             renderSectoresCriticos(BACKEND_INCIDENCIAS_CACHE);
         }
 
     } catch (err) {
         displayAlert(err.message, 'error');
     }
+
+    return false; // Candado final absoluto anti-refresco
 };
 
-function abrirModalEditarSolucion(id, fotoCierre, notaCierre) {
-    // Procesar la foto actual de la solución de forma inteligente
-    let urlFotoCierre = 'https://images.unsplash.com/photo-1584467541268-b040f83be3fd?w=500'; // Respaldo genérico
+window.abrirModalDetalleIncidencia = function(id, titulo, descripcion, fotoUrl, estado, sector, urgencia, latitud, longitud) {
 
-    if (fotoCierre && fotoCierre !== 'null' && fotoCierre !== 'undefined' && fotoCierre.trim() !== '') {
-        if (fotoCierre.startsWith('http')) {
-            urlFotoCierre = fotoCierre;
-        } else {
-            // Quitamos cualquier barra inclinada que venga al inicio para estandarizar (ej: "/uploads/" -> "uploads/")
-            let rutaLimpia = fotoCierre.startsWith('/') ? fotoCierre.substring(1) : fotoCierre;
-            
-            if (rutaLimpia.startsWith('uploads/')) {
-                urlFotoCierre = FILE_SERVER + rutaLimpia;
-            } else {
-                urlFotoCierre = FILE_SERVER + 'uploads/' + rutaLimpia;
-            }
-        }
+    // 1. Cierre preventivo del popup de Leaflet para limpiar el mapa
+    if (typeof objetoMapa !== 'undefined' && objetoMapa !== null) {
+        objetoMapa.closePopup(); 
+    }
+    
+    // 2. Buscamos el modal que ya vive fijo en el HTML
+    const modal = document.getElementById('modalDetalleGlobal');
+    if (!modal) return; // Control de seguridad por si acaso
+
+    // 3. Inyectar los datos dinámicos básicos
+    document.getElementById('mdG-titulo').innerText = titulo || 'Detalle de Incidencia';
+    document.getElementById('mdG-descripcion').innerText = descripcion || 'Sin descripción disponible.';
+    document.getElementById('mdG-imagen').src = fotoUrl || 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?w=150';
+    document.getElementById('mdG-sector').innerHTML = `<i class="ti ti-map-pin text-blue-400"></i> ${sector || 'Desconocido'}`;
+    document.getElementById('mdG-urgencia').innerText = urgencia || 'Media';
+    
+    // 4. 💥 CONSTRUIR LA RUTA DE GOOGLE MAPS PREMIUM (Arreglando la inyección de variables)
+    const contenedorRuta = document.getElementById('mdG-contenedor-ruta');
+    if (latitud && longitud && latitud !== 'undefined' && longitud !== 'undefined') {
+        const urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&destination=${latitud},${longitud}&travelmode=driving`;
+        
+        contenedorRuta.innerHTML = `
+            <a href="${urlGoogleMaps}" target="_blank" rel="noopener noreferrer" 
+               class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-950/50 cursor-pointer text-center block">
+                <i class="ti ti-map-2 text-sm">🧭</i> ¡Trazar ruta GPS en Google Maps!
+            </a>
+        `;
+    } else {
+        contenedorRuta.innerHTML = `
+            <p class="text-[10px] text-slate-500 text-center italic bg-slate-950/30 py-2 rounded border border-slate-800/40">
+                Coordenadas no disponibles para este reporte.
+            </p>
+        `;
     }
 
-    const modal = document.createElement('div');
-    modal.id = 'modalEditarSolucionAdmin';
-    modal.className = "fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4";
+    // 5. Configurar los estilos de la etiqueta de estado
+    const badgeEstado = document.getElementById('mdG-estado');
+    badgeEstado.innerText = estado || 'Pendiente';
+    badgeEstado.className = "px-2 py-0.5 rounded-full text-[10px] font-bold border";
     
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl overflow-hidden shadow-xl max-w-md w-full border border-slate-100 flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div class="flex items-center gap-2 text-slate-800">
-                    <span class="font-bold text-sm">Gestionar Evidencia de Cierre</span>
-                </div>
-                <button onclick="cerrarModalEditarSolucion()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
-            </div>
-            
-            <form id="formEditarSolucion" class="p-4 flex flex-col gap-4 overflow-y-auto">
-                <input type="hidden" name="id" value="${id}">
-                
-                <div class="flex flex-col gap-1">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Evidencia Actual</span>
-                    <div class="w-full h-40 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
-                        <img src="${urlFotoCierre}" class="w-full h-full object-cover">
-                    </div>
-                </div>
+    if (estado === 'En Proceso') {
+        badgeEstado.classList.add('bg-amber-500/10', 'text-amber-400', 'border-amber-500/20');
+    } else if (estado === 'Resuelta' || estado === 'Resuelto') {
+        badgeEstado.classList.add('bg-green-500/10', 'text-green-400', 'border-green-500/20');
+    } else if (estado === 'Rechazada') {
+        badgeEstado.classList.add('bg-slate-500/10', 'text-slate-400', 'border-slate-700');
+    } else {
+        badgeEstado.classList.add('bg-red-500/10', 'text-red-400', 'border-red-500/20');
+    }
 
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Cambiar Imagen (Opcional)</label>
-                    <input type="file" name="foto_cierre" accept="image/*" class="text-xs text-slate-600 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Nota de Cierre / Mensaje al Barrio</label>
-                    <textarea name="nota_cierre" rows="3" required class="p-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-600 resize-none">${notaCierre}</textarea>
-                </div>
-
-                <div class="flex gap-2 mt-2 pt-3 border-t border-slate-100">
-                    <button type="button" onclick="cerrarModalEditarSolucion()" class="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-medium hover:bg-slate-200 transition-colors">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-xs font-medium hover:bg-emerald-700 transition-colors shadow-sm">
-                        💾 Guardar Cambios
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Escuchar el envío del formulario de actualización (El fragmento que confirmamos antes)
-    document.getElementById('formEditarSolucion').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        
-        try {
-            const response = await fetch(`${API_BASE}/incidencias/${id}/actualizar-solucion`, {
-                method: 'POST', 
-                headers: { 'Authorization': AppState.token },
-                body: formData
-            });
-
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Error al actualizar solución.');
-
-            alert('¡Evidencia actualizada correctamente!');
-            cerrarModalEditarSolucion();
-            
-            if (typeof loadAdminDashboard === 'function') loadAdminDashboard();
-
-        } catch (err) {
-            alert(err.message);
+    // 6. Mostrar el modal con su respectiva transición suave
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    setTimeout(() => {
+        const transformContainer = modal.querySelector('.transform');
+        if (transformContainer) {
+            transformContainer.classList.remove('scale-95');
+            transformContainer.classList.add('scale-100');
         }
-    });
-}
+    }, 10);
+};
 
 // 🚪 Función para destruir el modal
 function cerrarModalEditarSolucion() {
