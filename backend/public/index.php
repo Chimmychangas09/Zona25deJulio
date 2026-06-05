@@ -1,24 +1,8 @@
 <?php
 /**
  * Script de inicialización y configuración del núcleo de la aplicación API REST utilizando el framework Slim.
- * Carga las dependencias del proyecto y configura de forma global el middleware para el procesamiento de datos
- * en peticiones HTTP. Implementa un middleware personalizado para el control de acceso de origen cruzado (CORS),
- * interceptando solicitudes de tipo OPTIONS y homogeneizando las cabeceras de respuesta y credenciales permitidas.
- * Asimismo, define un manejador centralizado de errores que captura excepciones y retorna respuestas en formato JSON,
- * adaptando el nivel de detalle de depuración según el entorno configurado, para finalmente integrar las rutas de
- * autenticación y de gestión de incidencias antes de la ejecución del servidor.
  */
-// ---- PERMISOS PUBLICOS ----
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: X-Requested-With, Content-Type, Accept, Origin, Authorization');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
 
-// Interceptar la petición de control (Preflight) y responder un 200 limpio
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header("HTTP/1.1 200 OK");
-    exit();
-}
-// ---- HASTA AQUÍ ----
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -29,12 +13,15 @@ $app = AppFactory::create();
 
 $app->addBodyParsingMiddleware();
 
+// 1. MIDDLEWARE PARA CORS DINÁMICO
 $app->add(function (Request $request, $handler) {
+    // Detecta automáticamente de dónde viene la petición (Localhost o Netlify)
+    $origin = $request->getHeaderLine('Origin') ?: '*';
 
     if ($request->getMethod() === 'OPTIONS') {
         $response = AppFactory::determineResponseFactory()->createResponse();
         return $response
-            ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500') 
+            ->withHeader('Access-Control-Allow-Origin', $origin) 
             ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
             ->withHeader('Access-Control-Allow-Credentials', 'true')
@@ -44,7 +31,7 @@ $app->add(function (Request $request, $handler) {
     $response = $handler->handle($request);
     
     return $response
-        ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500')
+        ->withHeader('Access-Control-Allow-Origin', $origin)
         ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
         ->withHeader('Access-Control-Allow-Credentials', 'true')
@@ -58,6 +45,7 @@ $errorMiddleware = $app->addErrorMiddleware(
     true
 );
 
+// 2. MANEJADOR CENTRALIZADO DE ERRORES CON CORS DINÁMICO
 $errorMiddleware->setDefaultErrorHandler(function (Request $request, Throwable $exception) use ($config) {
     $response = AppFactory::determineResponseFactory()->createResponse();
     $statusCode = 500;
@@ -79,11 +67,14 @@ $errorMiddleware->setDefaultErrorHandler(function (Request $request, Throwable $
         ];
     }
 
+    // Volvemos a detectar el origen aquí por si la API falla estrepitosamente
+    $origin = $request->getHeaderLine('Origin') ?: '*';
+
     $response->getBody()->write(json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     
     return $response
         ->withStatus($statusCode)
-        ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500')
+        ->withHeader('Access-Control-Allow-Origin', $origin)
         ->withHeader('Content-Type', 'application/json');
 });
 
