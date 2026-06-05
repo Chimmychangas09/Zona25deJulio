@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Si alguien entra a la raíz de la web, mándalo silenciosamente a la vista index.html del frontend
+DirectoryIndex frontend/views/index.html
+
+# Asegurar que las peticiones al backend sigan funcionando correctamente
+RewriteRule ^backend/public/(.*)$ backend/public/index.php [QSA,L]

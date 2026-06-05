@@ -1,4 +1,4 @@
 /vendor/
-/database/incidencias.db
+#/database/incidencias.db
 .env
 *.log

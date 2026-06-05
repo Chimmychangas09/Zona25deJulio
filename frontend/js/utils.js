@@ -3,9 +3,15 @@
  * * - `API_BASE`: Endpoint raíz para el consumo de los servicios RESTful (rutas y controladores backend).
  * - `FILE_SERVER`: Servidor de archivos estáticos para la recuperación y carga de archivos multimedia (imágenes/evidencias).
  */
-const API_BASE = 'http://localhost:8000/api'; 
+/*Para que funcionara en mi compu const API_BASE = 'http://localhost:8000/api'; 
 const FILE_SERVER = 'http://localhost:8000/';
+*/
 
+// Apunta directo a la raíz de Railway + la ruta de tu API
+const API_BASE = 'https://zona25dejulio-production.up.railway.app/api'; 
+
+// Apunta directo a la raíz de Railway para leer la carpeta uploads/
+const FILE_SERVER = 'https://zona25dejulio-production.up.railway.app/';
 /**
  * Objeto de estado global de la aplicación en el lado del cliente (State Management).
  * * - Recupera y mantiene en memoria la sesión activa del usuario de forma persistente.
