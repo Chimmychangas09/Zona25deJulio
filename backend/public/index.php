@@ -8,6 +8,17 @@
  * adaptando el nivel de detalle de depuración según el entorno configurado, para finalmente integrar las rutas de
  * autenticación y de gestión de incidencias antes de la ejecución del servidor.
  */
+// ---- PERMISOS PUBLICOS ----
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: X-Requested-With, Content-Type, Accept, Origin, Authorization');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
+
+// Interceptar la petición de control (Preflight) y responder un 200 limpio
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header("HTTP/1.1 200 OK");
+    exit();
+}
+// ---- HASTA AQUÍ ----
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
