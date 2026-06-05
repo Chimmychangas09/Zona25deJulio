@@ -34,9 +34,16 @@ let vistaUsuariosActual = 'activos';
 document.addEventListener("DOMContentLoaded", function() {
     if (!checkAuth('Administrador')) return; 
 
+    // Botón Cerrar Sesión (Computadora)
     const btnLogout = document.getElementById('navBtnLogout');
     if (btnLogout) {
         btnLogout.addEventListener('click', handleLogout);
+    }
+
+    // Botón Cerrar Sesión (Celular)
+    const btnMobileLogout = document.getElementById('btnMobileLogout');
+    if (btnMobileLogout) {
+        btnMobileLogout.addEventListener('click', handleLogout); 
     }
     
     initFilterSystem();
