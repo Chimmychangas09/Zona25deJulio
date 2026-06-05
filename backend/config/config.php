@@ -25,15 +25,16 @@ $config = [
             'max_size' => 5242880 
         ]
     ],
+
     'production' => [
-        'display_errors' => false,
+        'display_errors' => true, // Lo dejamos en true por si acaso debugear algo en vivo
         'log_errors' => true,
         'db' => [
-            'driver' => 'mysql',
-            'host' => '127.0.0.1',
-            'database' => 'prod_incidencias_25jul',
-            'username' => 'user_admin_25j',
-            'password' => 'S3cur3_P4ssW0rd_2026!',
+            'driver' => 'sqlite', 
+            'database' => __DIR__ . '/../database/incidencias.db', // Usará incidencias.db subido
+            'host' => 'localhost',
+            'username' => 'root',
+            'password' => '',
             'charset' => 'utf8mb4'
         ],
         'upload' => [
