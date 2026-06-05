@@ -10,7 +10,7 @@
         .color-scheme-dark { color-scheme: dark; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 </head>
@@ -66,7 +66,7 @@
                     <i class="ti ti-user-plus text-base"></i> <span class="hidden sm:inline">Nuevo Admin</span>
                 </button>
 
-                <button id="btnAbrirConfigSistema" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Configurar Sectores y Tipos de Daño">
+                <button id="btnAbrirConfigSistema" class="relative z-50 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Configurar Sectores y Tipos de Daño">
                     <i class="ti ti-settings text-base"></i> <span class="hidden sm:inline">Sectores / Daños</span>
                 </button>
                 
@@ -74,23 +74,10 @@
                     <i class="ti ti-plus text-base"></i> <span class="hidden sm:inline">Reportar</span>
                 </button>
 
-                <button class="border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-xs font-medium py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors" id="btnRefresh" onclick="loadAdminDashboard()">
+                <button class="border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-xs font-medium py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer" id="btnRefresh" onclick="loadAdminDashboard()">
                     <i class="ti ti-refresh"></i>
+                    <span>Actualizar Mapa</span>
                 </button>
-
-                <div class="relative inline-block border-l border-slate-700 pl-3 ml-1">
-                    <button id="notiBellBtn" class="p-2 text-slate-300 hover:text-white relative transition-colors">
-                        <i class="ti ti-bell text-xl"></i>
-                        <span id="notiCountBadge" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold shadow-sm">3</span>
-                    </button>
-                    <div id="notiDropdown" class="hidden absolute right-0 top-full mt-2 w-72 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 overflow-hidden">
-                        <div class="bg-slate-900 text-white p-3 text-xs font-bold flex justify-between items-center border-b border-slate-700">
-                            <span><i class="ti ti-bell-ringing"></i> Alertas del Sector</span>
-                            <span id="clearNotis" class="text-[10px] cursor-pointer text-blue-400 hover:text-blue-300 underline">Marcar leídas</span>
-                        </div>
-                        <div id="notiListContainer" class="max-h-[240px] overflow-y-auto divide-y divide-slate-700 text-xs text-slate-300"></div>
-                    </div>
-                </div>
             </div>
         </header>
 
@@ -143,100 +130,134 @@
             </section>
 
             <section id="tab-incidencias" class="tab-content hidden space-y-6">
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
-                    <div class="flex flex-wrap gap-4 items-end mb-4">
-                        <div class="flex-1 min-w-[200px] relative">
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1">Buscar Incidencia:</label>
-                            <div class="relative">
-                                <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base"></i>
-                                <input type="text" id="searchFilterInput" placeholder="Ej. bache, poste, basura..." class="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors placeholder-slate-600">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700/70 shadow-xl space-y-5">
+                    
+                    <div class="flex flex-wrap gap-4 items-end">
+                        
+                        <div class="flex-1 min-w-[220px]">
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-tool text-slate-500 text-xs"></i> Filtrar por Daño o Tipo:
+                            </label>
+                            <div class="relative flex items-center">
+                                <i class="ti ti-alert-triangle absolute left-3 text-slate-400 text-sm pointer-events-none"></i>
+                                <select id="searchFilterInput" class="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
+                                    <option value="TODOS">Todos los Tipos de Daño</option>
+                                </select>
+                                <i class="ti ti-chevron-down absolute right-3 text-slate-500 text-xs pointer-events-none"></i>
                             </div>
                         </div>
 
-                        <div class="min-w-[150px]">
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1">Filtrar por Sector:</label>
-                            <select id="sectorFilterSelect" class="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500">
-                                <option value="TODOS">🌍 Todos los Sectores</option>
-                                <option value="Plaza Principal 25 de Julio">Plaza Principal</option>
-                                <option value="Carretera Principal / Ingreso">Carretera Principal (Ingreso)</option>
-                                <option value="Unidad Educativa / Colegio">Sector Unidad Educativa</option>
-                                <option value="Canchas Deportivas">Sector Canchas</option>
-                                <option value="Vías Internas / Calles Secundarias">Vías Internas / Calles</option>
-                            </select>
+                        <div class="min-w-[180px] flex-1 sm:flex-none">
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-map-pin text-slate-500 text-xs"></i> Filtrar por Sector:
+                            </label>
+                            <div class="relative flex items-center">
+                                <i class="ti ti-map text-slate-400 text-sm pointer-events-none"></i>
+                                <select id="sectorFilterSelect" class="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
+                                    <option value="TODOS">Todos los Sectores</option>
+                                </select>
+                                <i class="ti ti-chevron-down absolute right-3 text-slate-500 text-xs pointer-events-none"></i>
+                            </div>
                         </div>
 
-                        <div class="min-w-[150px]">
-                            <label class="block text-[11px] font-bold text-slate-400 mb-1">Filtrar por Estado:</label>
-                            <select id="estadoFilterSelect" class="w-full p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white outline-none focus:border-blue-500">
-                                <option value="ACTIVAS" selected>🛠️ Casos Activos (Bandeja)</option>
-                                <option value="Pendiente">Pendiente 🔴</option>
-                                <option value="En Proceso">En Proceso 🟡</option>
-                                <option value="Resuelto">Resuelto 🟢</option>
-                                <option value="Rechazada">Rechazada 📋</option>
-                                <option value="Cancelada">Cancelada 🚫</option>
-                                <option value="TODOS">🗄️ Ver Todo el Historial</option>
-                            </select>
+                        <div class="min-w-[200px] flex-1 sm:flex-none">
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-settings text-slate-500 text-xs"></i> Filtrar por Estado:
+                            </label>
+                            <div class="relative flex items-center">
+                                <i class="ti ti-layout-list text-slate-400 text-sm pointer-events-none"></i>
+                                <select id="estadoFilterSelect" class="w-full pl-9 pr-8 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
+                                    <option value="ACTIVAS" selected>Casos Activos (Bandeja)</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="En Proceso">En Proceso</option>
+                                    <option value="Resuelto">Resuelto</option>
+                                    <option value="Rechazada">Rechazada</option>
+                                    <option value="Cancelada">Cancelada</option>
+                                    <option value="TODOS">Ver Todo el Historial</option>
+                                </select>
+                                <i class="ti ti-chevron-down absolute right-3 text-slate-500 text-xs pointer-events-none"></i>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mb-4">
-                        <button type="button" id="btnFiltroHoy" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold py-2 px-3 rounded-lg transition-colors">Hoy</button>
-                        <button type="button" id="btnFiltroMes" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold py-2 px-3 rounded-lg transition-colors">Este Mes</button>
-                        <button type="button" id="btnFiltroAno" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold py-2 px-3 rounded-lg transition-colors">Este Año</button>
-                    </div>
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700/60 flex flex-wrap items-center justify-between gap-4">
+                        
+                        <div class="flex flex-col gap-1.5">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-clock text-xs"></i> Atajos de tiempo</span>
+                            <div class="flex bg-slate-800 p-1 border border-slate-700 rounded-lg gap-0.5 shadow-inner">
+                                <button type="button" id="btnFiltroHoy" class="px-3 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-md transition-all cursor-pointer">Hoy</button>
+                                <button type="button" id="btnFiltroMes" class="px-3 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-md transition-all cursor-pointer">Este Mes</button>
+                                <button type="button" id="btnFiltroAno" class="px-3 py-1.5 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-md transition-all cursor-pointer">Este Año</button>
+                            </div>
+                        </div>
 
-                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex flex-wrap items-end gap-4">
-                        <div class="flex flex-col gap-1">
-                            <label for="filtroFechaInicio" class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fecha Inicio</label>
-                            <input type="date" id="filtroFechaInicio" class="color-scheme-dark border border-slate-700 rounded-lg px-3 py-1.5 text-sm bg-slate-800 text-white focus:outline-none focus:border-blue-500 transition-all">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label for="filtroFechaInicio" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-calendar-event text-xs"></i> Fecha Inicio</label>
+                                <input type="date" id="filtroFechaInicio" class="color-scheme-dark border border-slate-700 rounded-lg px-3 py-1.5 text-xs bg-slate-800 text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer">
+                            </div>
+                            
+                            <div class="flex flex-col gap-1.5">
+                                <label for="filtroFechaFin" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-calendar-event text-xs"></i> Fecha Fin</label>
+                                <input type="date" id="filtroFechaFin" class="color-scheme-dark border border-slate-700 rounded-lg px-3 py-1.5 text-xs bg-slate-800 text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer">
+                            </div>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label for="filtroFechaFin" class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fecha Fin</label>
-                            <input type="date" id="filtroFechaFin" class="color-scheme-dark border border-slate-700 rounded-lg px-3 py-1.5 text-sm bg-slate-800 text-white focus:outline-none focus:border-blue-500 transition-all">
+
+                        <div class="flex items-end gap-2 self-end lg:mt-0 w-full sm:w-auto justify-end">
+                            <button id="btnLimpiarFiltros" class="border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-xs font-bold py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                                <i class="ti ti-refresh text-sm"></i> Limpiar
+                            </button>
+                            <button id="btnExportarExcel" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-blue-950/20 cursor-pointer">
+                                <i class="ti ti-file-spreadsheet text-sm"></i> Exportar Reporte
+                            </button>
                         </div>
-                        <button id="btnLimpiarFiltros" class="border border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1">
-                            <i class="ti ti-refresh text-base"></i> Limpiar
-                        </button>
-                        <button id="btnExportarExcel" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm ml-auto">
-                            <i class="ti ti-file-spreadsheet text-base"></i> Exportar Reporte
-                        </button>
+
                     </div>
                 </div>
 
-                <div>
-                    <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2"><i class="ti ti-list text-blue-500"></i> Listado de Incidencias Reportadas</h3>
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-slate-100 mb-4 flex items-center gap-2 tracking-wide uppercase">
+                        <i class="ti ti-list text-blue-500 text-base"></i> Listado de Incidencias Reportadas
+                    </h3>
                     <div id="adminIncidenciasList" class="space-y-4"></div>
                 </div>
             </section>
 
             <section id="tab-usuarios" class="tab-content hidden space-y-6">
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
+                <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-xl">
                     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
                         <div>
-                            <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="ti ti-users text-blue-500"></i> Control Maestro de Usuarios</h3>
+                            <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                                <i class="ti ti-users text-blue-400"></i> Control Maestro de Usuarios
+                            </h3>
                             <p class="text-[11px] text-slate-400 mt-1">Administra privilegios, edita credenciales o da de baja cuentas.</p>
                         </div>
-                        <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
-                            <button onclick="loadUsuariosMaster('activos')" class="px-4 py-1.5 bg-slate-700 text-white rounded-md text-xs font-bold shadow-sm transition-all focus:outline-none">
+                        
+                        <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800/80">
+                            <button id="btnTabActivos" onclick="loadUsuariosMaster('activos')" 
+                                    class="px-4 py-1.5 rounded-md text-xs font-bold transition-all focus:outline-none cursor-pointer">
                                 🟢 Activos
                             </button>
-                            <button onclick="loadUsuariosMaster('eliminados')" class="px-4 py-1.5 text-slate-400 hover:text-white rounded-md text-xs font-medium transition-all focus:outline-none">
+                            <button id="btnTabEliminados" onclick="loadUsuariosMaster('eliminados')" 
+                                    class="px-4 py-1.5 rounded-md text-xs font-bold transition-all focus:outline-none cursor-pointer">
                                 🗑️ Dados de Baja
                             </button>
                         </div>
                     </div>
-                    <div class="overflow-x-auto rounded-lg border border-slate-700">
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 shadow-xl backdrop-blur-sm">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
-                                <tr class="border-b border-slate-700 text-slate-300 font-bold bg-slate-900">
-                                    <th class="p-3 w-16">ID</th>
-                                    <th class="p-3">Nombre Completo</th>
-                                    <th class="p-3">Correo Electrónico</th>
-                                    <th class="p-3">Nivel / Rol</th>
-                                    <th class="p-3 text-center w-32">Acciones</th>
+                                <tr class="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/60 tracking-wider uppercase text-[10px]">
+                                    <th class="p-3.5 w-16 font-mono">ID</th>
+                                    <th class="p-3.5">Nombre Completo</th>
+                                    <th class="p-3.5">Correo Electrónico</th>
+                                    <th class="p-3.5">Nivel / Rol</th>
+                                    <th class="p-3.5 text-center w-32">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="tablaUsuariosMasterBody" class="divide-y divide-slate-700/50"></tbody>
+                            <tbody id="tablaUsuariosMasterBody" class="divide-y divide-slate-800/60 text-slate-300 bg-slate-950/20">
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -294,58 +315,75 @@
     </div>
 
     <div id="modalReporteAdmin" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-md p-6">
-            <div class="flex justify-between border-b border-slate-700 pb-3 mb-4">
-                <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="ti ti-photo-camera text-emerald-500 text-lg"></i> Crear Reporte</h3>
-                <button id="btnCerrarReporteAdmin" class="text-slate-400 hover:text-white"><i class="ti ti-x text-lg"></i></button>
+    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between border-b border-slate-700 pb-3 mb-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="ti ti-photo-camera text-emerald-500 text-lg"></i> Crear Reporte Administrativo
+            </h3>
+            <button id="btnCerrarReporteAdmin" class="text-slate-400 hover:text-white">
+                <i class="ti ti-x text-lg"></i>
+            </button>
+        </div>
+        
+        <form id="formReporteAdmin" enctype="multipart/form-data" class="space-y-4 text-xs">
+            <input type="hidden" id="adminIncLatitud" name="latitud" value="0">
+            <input type="hidden" id="adminIncLongitud" name="longitud" value="0">
+
+            <div id="adminGeoStatusBox" class="bg-amber-950/30 border border-amber-900/50 rounded-lg p-3.5 mb-5 flex items-center gap-3">
+                <i class="ti ti-gps text-xl text-amber-400 animate-pulse" id="adminGeoIcon"></i>
+                <div class="text-xs">
+                    <p id="adminGeoTitle" class="font-bold text-amber-300">Adquiriendo Coordenadas GPS...</p>
+                    <span id="adminGeoCoords" class="text-slate-400">Buscando satélites de posicionamiento...</span>
+                </div>
             </div>
-            <form id="formReporteAdmin" enctype="multipart/form-data" class="space-y-4 text-xs">
-                <input type="hidden" id="repoLatitud" name="latitud" value="0">
-                <input type="hidden" id="repoLongitud" name="longitud" value="0">
 
-                <div id="adminGeoStatusBox" class="bg-amber-950/30 border border-amber-900/50 rounded-lg p-3.5 mb-5 flex items-center gap-3">
-                    <i class="ti ti-gps text-xl text-amber-400 animate-pulse" id="adminGeoIcon"></i>
-                    <div class="text-xs">
-                        <p id="adminGeoTitle" class="font-bold text-amber-300">Adquiriendo Coordenadas GPS...</p>
-                        <span id="adminGeoCoords" class="text-slate-400">Buscando satélites de posicionamiento...</span>
-                    </div>
-                </div>
+            <div>
+                <label class="block text-slate-400 font-bold mb-1">Sector / Ubicación</label>
+                <select name="sector" id="adminRepoSector" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500">
+                    <option value="" disabled selected>-- Seleccione el sector --</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-slate-400 font-bold mb-1">Tipo de Daño Urbano</label>
+                <select name="tipo_danio_id" id="adminRepoDanio" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500">
+                    <option value="" disabled selected>-- Seleccione el tipo de daño --</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-slate-400 font-bold mb-1">Descripción de la Incidencia</label>
+                <textarea id="adminRepoDescripcion" name="descripcion" rows="3" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 resize-none" placeholder="Detalles de la reparación o urgencia..."></textarea>
+            </div>
+            
+            <div>
+    <label class="block text-xs font-semibold text-slate-400 mb-2">
+        Evidencia Fotográfica <span class="text-emerald-400 font-normal">(Control de Captura Activo)</span>
+    </label>
+    
+    <input type="file" id="adminIncFotoArchivo"  class="hidden" accept="image/png, image/jpeg, image/jpg">
+    <input type="file" id="adminIncFotoCamara" class="hidden" accept="image/png, image/jpeg, image/jpg" capture="environment">
 
-                <input type="hidden" id="adminIncLatitud" name="latitud">
-                <input type="hidden" id="adminIncLongitud" name="longitud">
+    <div class="grid grid-cols-2 gap-3 text-xs">
+        <button type="button" onclick="document.getElementById('adminIncFotoCamara').click()" 
+                class="flex flex-col items-center justify-center p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 font-medium transition-all gap-1 cursor-pointer group focus:border-emerald-500">
+            <span class="text-lg group-hover:scale-110 transition-transform">📸</span>
+            <span>Tomar Foto</span>
+        </button>
 
-                <div>
-                    <label class="block text-slate-400 font-bold mb-1">Sector</label>
-                    <select name="sector" id="repoSector" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500">
-                        <option value="" disabled selected>-- Seleccione el sector --</option>
-                        <option value="Plaza Principal 25 de Julio">Plaza Principal</option>
-                        <option value="Carretera Principal / Ingreso">Carretera Principal</option>
-                        <option value="Unidad Educativa / Colegio">Unidad Educativa</option>
-                        <option value="Canchas Deportivas">Canchas Deportivas</option>
-                        <option value="Vías Internas / Calles Secundarias">Vías Internas</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-slate-400 font-bold mb-1">Tipo de Daño</label>
-                    <select id="repoTipo" name="tipo_danio" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500">
-                        <option value="" disabled selected>-- Seleccione --</option>
-                        <option value="Bache Estructural">Bache o Deterioro</option>
-                        <option value="Alumbrado Defectuoso">Alumbrado</option>
-                        <option value="Acumulación de Residuos">Basura</option>
-                        <option value="Alcantarillado Obstruido">Alcantarillado</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-slate-400 font-bold mb-1">Descripción</label>
-                    <textarea id="repoDescripcion" name="descripcion" rows="3" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-slate-400 font-bold mb-1">Evidencia Fotográfica</label>
-                    <input type="file" id="repoFoto" name="foto" accept="image/*" required class="w-full text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 cursor-pointer">
-                </div>
+        <button type="button" onclick="document.getElementById('adminIncFotoArchivo').click()" 
+                class="flex flex-col items-center justify-center p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 font-medium transition-all gap-1 cursor-pointer group focus:border-emerald-500">
+            <span class="text-lg group-hover:scale-110 transition-transform">📂</span>
+            <span>Subir Archivo</span>
+        </button>
+    </div>
+
+    <div id="adminVistaPreviaNombre" class="text-[10px] text-slate-500 mt-2 italic hidden bg-slate-950/40 p-1.5 rounded border border-slate-900 text-center"></div>
+    </div>
+                
                 <div class="flex justify-end gap-3 border-t border-slate-700 pt-4">
-                    <button type="button" id="btnCancelarReporteAdmin" class="px-4 py-2 bg-slate-700 text-white rounded-lg">Cancelar</button>
-                    <button type="submit" id="btnReportarAdminSubmit" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg">
+                    <button type="button" id="btnCancelarReporteAdmin" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors">Cancelar</button>
+                    <button type="submit" id="btnReportarAdminSubmit" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 transition-colors">
                         Enviar Reporte
                     </button>
                 </div>
@@ -387,73 +425,82 @@
     <div id="modalCierreIncidencia" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
         <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-sm p-6">
             <div class="flex justify-between border-b border-slate-700 pb-3 mb-4">
-                <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="ti ti-checklist text-emerald-500"></i> Evidencia de Solución</h3>
+                <h3 id="modalCierreTitulo" class="text-sm font-bold text-white flex items-center gap-2"><i class="ti ti-checklist text-emerald-500"></i> Evidencia de Solución</h3>
                 <button type="button" onclick="cerrarModalCierre()" class="text-slate-400 hover:text-white"><i class="ti ti-x text-lg"></i></button>
             </div>
             <form id="formCierreIncidencia" enctype="multipart/form-data" class="space-y-4 text-xs">
                 <input type="hidden" id="cierreIncidenciaId">
                 <input type="hidden" id="cierreNuevoEstado">
                 <div>
-                    <label class="block text-slate-400 font-bold mb-1">Nota Aclaratoria</label>
+                    <label id="lblCierreNota" class="block text-slate-400 font-bold mb-1">Nota Aclaratoria</label>
                     <textarea id="cierreNota" name="nota_cierre" rows="3" required class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white outline-none focus:border-emerald-500 resize-none"></textarea>
                 </div>
-                <div>
+                <div id="contenedorFotoCierre">
                     <label class="block text-slate-400 font-bold mb-1">Foto (Obligatoria)</label>
                     <input type="file" id="cierreFoto" name="foto_cierre" accept="image/*" required class="w-full text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 cursor-pointer">
                 </div>
                 <div class="flex justify-end gap-3 border-t border-slate-700 pt-4">
                     <button type="button" onclick="cerrarModalCierre()" class="px-4 py-2 bg-slate-700 text-white rounded-lg">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg">Cerrar Caso</button>
+                    <button type="submit" id="btnEnviarCierre" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg">Cerrar Caso</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <div id="modalDetalleGlobal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] hidden justify-center items-center p-4 transition-all duration-300">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-            <h3 id="mdG-titulo" class="text-sm font-bold text-slate-100 uppercase tracking-wide truncate pr-4">Detalle de Incidencia</h3>
-            <button onclick="cerrarModalDetalleGlobal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer">
-                <i class="ti ti-x text-lg">✖</i>
+    
+    <div id="modalConfig" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden border border-gray-100 flex flex-col max-h-[85vh]">
+        
+        <div class="bg-purple-600 text-white px-6 py-4 flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-base flex items-center gap-2">
+                <i class="ti ti-settings text-xl"></i> Configuración del Sistema
+            </h3>
+            <button id="btnCerrarConfig" class="text-white hover:text-purple-200 transition-colors">
+                <i class="ti ti-x text-xl"></i>
             </button>
         </div>
-        
-        <div class="p-5 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
-            <div class="w-full h-48 bg-slate-950 rounded-lg overflow-hidden border border-slate-800 shadow-inner">
-                <img id="mdG-imagen" src="" alt="Evidencia" class="w-full h-full object-cover">
-            </div>
+
+        <div class="flex border-b border-gray-200 bg-gray-50 shrink-0">
+            <button id="tabSectores" class="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-purple-600 text-purple-600 transition-colors focus:outline-none">
+                Sectores
+            </button>
+            <button id="tabDanios" class="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors focus:outline-none">
+                Tipos de Daño
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1">
             
-            <div>
-                <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Descripción del reporte</span>
-                <p id="mdG-descripcion" class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800/60 whitespace-pre-line"></p>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-3 text-[11px] pt-2 border-t border-slate-800/60">
-                <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/40">
-                    <span class="text-slate-500 block text-[9px] uppercase font-bold mb-0.5">📍 Ubicación / Sector</span>
-                    <span id="mdG-sector" class="text-slate-300 font-medium"></span>
+            <div id="vistaSectores" class="space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="inputNuevoSector" placeholder="Ej. Sector 25 de Julio" class="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <button id="btnAgregarSector" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm shrink-0">
+                        Agregar
+                    </button>
                 </div>
-                <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/40">
-                    <span class="text-slate-500 block text-[9px] uppercase font-bold mb-0.5">⚠️ Nivel de Urgencia</span>
-                    <span id="mdG-urgencia" class="text-slate-300 font-medium capitalize"></span>
+                <div class="border rounded-lg bg-white overflow-hidden shadow-sm">
+                    <ul id="listaSectores" class="divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                        </ul>
                 </div>
             </div>
 
-            <div id="mdG-contenedor-ruta" class="pt-2"></div>
-                    </div>
+            <div id="vistaDanios" class="space-y-4 hidden">
+                <div class="space-y-2 border p-3 rounded-lg bg-gray-50">
+                    <input type="text" id="inputNuevoDanio" autocomplete="off" placeholder="Nombre del daño (Ej. Bache)" class="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
                     
-                    <div class="p-3.5 bg-slate-950/40 border-t border-slate-800 flex justify-between items-center px-5">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-[9px] uppercase font-bold text-slate-500">Estado:</span>
-                            <span id="mdG-estado" class="px-2 py-0.5 rounded-full text-[10px] font-bold border"></span>
-                        </div>
-                        <button onclick="cerrarModalDetalleGlobal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer">
-                            Cerrar
-                        </button>
-                    </div>
+                    <textarea id="inputDescDanio" autocomplete="off" placeholder="Descripción breve del daño..." rows="2" class="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"></textarea>
+                    
+                    <button id="btnAgregarDanio" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm">
+                        Agregar Tipo de Daño
+                    </button>
+                </div>
+                <div class="border rounded-lg bg-white overflow-hidden shadow-sm">
+                    <ul id="listaDanios" class="divide-y divide-gray-100 max-h-60 overflow-y-auto"></ul>
                 </div>
             </div>
 
+        </div>
+    </div>
+    </div>
     <script>
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden', 'block') && el.classList.remove('block'));

@@ -1,11 +1,11 @@
 <?php
-
 /**
- * Sistema de Gestión de Incidencias Urbanas - Zona 25 de Julio
- * Archivo de Configuración Centralizada
+ * Configuración general del sistema según el entorno de ejecución.
+ * * Define de forma predeterminada el entorno de desarrollo si no ha sido establecido previamente.
+ * Retorna un arreglo multidimensional que especifica las directivas de depuración, la gestión
+ * de errores, las credenciales y parámetros de conexión a la base de datos (SQLite para desarrollo
+ * y MySQL para producción), así como los límites y rutas para la carga de archivos del entorno activo.
  */
-
-// Detectar el entorno (puedes cambiarlo a 'production' al desplegar)
 if (!defined('APP_ENV')) { define('APP_ENV', 'development'); }
 
 $config = [
@@ -22,7 +22,7 @@ $config = [
         ],
         'upload' => [
             'directory' => __DIR__ . '/../public/uploads/',
-            'max_size' => 5242880 // 5MB en bytes
+            'max_size' => 5242880 
         ]
     ],
     'production' => [
@@ -38,7 +38,7 @@ $config = [
         ],
         'upload' => [
             'directory' => __DIR__ . '/../public/uploads/',
-            'max_size' => 3145728 // 3MB en bytes
+            'max_size' => 3145728 
         ]
     ]
 ];

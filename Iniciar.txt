@@ -1,6 +1,9 @@
-cd incidencias-25julio
+Iniciar el server con:
 
 php -S localhost:8000 -t public
 
+desde la carpeta backend
+
+Credenciales base:
 admin@zona25julio.com
 GestionUrbana2026!

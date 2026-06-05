@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * Controlador encargado de la autenticación y gestión de accesos de usuarios dentro de la API.
+ * Provee la lógica de negocio para el registro seguro de ciudadanos mediante la validación estructural,
+ * saneamiento de datos y encriptación de contraseñas con BCRYPT, previniendo duplicidades en el sistema.
+ * Asimismo, administra el inicio de sesión verificando las credenciales contra la base de datos y
+ * generando un token de sesión simulado (codificado en Base64 con datos de identidad, rol y expiración)
+ * para el control de autorización en solicitudes subsecuentes de la plataforma.
+ */
 namespace App\Auth;
 
 use App\Database\Connection;
@@ -10,14 +17,10 @@ use PDO;
 
 class AuthController
 {
-    /**
-     * Endpoint: POST /api/auth/register
-     */
     public function register(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
         
-        // Validación rigurosa de campos requeridos
         if (empty($data['nombre']) || empty($data['correo']) || empty($data['password'])) {
             throw new RuntimeException("Todos los campos estructurales (nombre, correo, password) son obligatorios.", 400);
         }
@@ -32,17 +35,14 @@ class AuthController
 
         $db = Connection::getConnection();
 
-        // Verificar colisión de cuentas (usuarios duplicados)
-        //  CÓDIGO CORREGIDO Y SEGURO:
         $stmtCheck = $db->prepare("SELECT id FROM usuarios WHERE correo = ? AND eliminado_en IS NULL LIMIT 1");
         $stmtCheck->execute([$data['correo']]);
         if ($stmtCheck->fetch()) {
             throw new RuntimeException("El correo ya se encuentra registrado en el padrón de la zona.", 409);
         }
 
-        // Cifrado criptográfico irreversible de la credencial
         $passwordHash = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 12]);
-        $rolCiudadano = 2; // Por defecto todo registro externo es un vecino (Ciudadano)
+        $rolCiudadano = 2; 
 
         $stmtInsert = $db->prepare("INSERT INTO usuarios (nombre, correo, password, rol_id) VALUES (?, ?, ?, ?)");
         $stmtInsert->execute([
@@ -61,9 +61,6 @@ class AuthController
         return $response->withStatus(201);
     }
 
-    /**
-     * Endpoint: POST /api/auth/login
-     */
     public function login(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
@@ -74,7 +71,6 @@ class AuthController
 
         $db = Connection::getConnection();
 
-        // 🕵️‍♂️ CORRECCIÓN AQUÍ: Añadimos "AND u.eliminado_en IS NULL"
         $stmt = $db->prepare("
             SELECT u.*, r.nombre as rol_nombre 
             FROM usuarios u 
@@ -84,17 +80,14 @@ class AuthController
         $stmt->execute([strtolower(trim($data['correo']))]);
         $user = $stmt->fetch();
 
-        // Verificación de tiempo constante contra ataques de sincronización temporizada
-        // Si el usuario fue eliminado, $user será false, y disparará el 401 automáticamente.
         if (!$user || !password_verify($data['password'], $user['password'])) {
             throw new RuntimeException("Las credenciales de acceso son incorrectas o inexistentes.", 401);
         }
 
-        // Estructuración del Token Simulado (Estructura de payload plano seguro para SPA)
         $tokenSimulado = base64_encode(json_encode([
             'uid' => $user['id'],
             'rol' => $user['rol_nombre'],
-            'exp' => time() + 28800 // Expiración en 8 horas
+            'exp' => time() + 28800 
         ]));
 
         $payload = [

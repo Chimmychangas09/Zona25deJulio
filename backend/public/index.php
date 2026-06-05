@@ -1,10 +1,13 @@
 <?php
-
 /**
- * Sistema de Gestión de Incidencias Urbanas - Zona 25 de Julio
- * Punto de Entrada Único (Front Controller) - Edición Blindada CORS
+ * Script de inicialización y configuración del núcleo de la aplicación API REST utilizando el framework Slim.
+ * Carga las dependencias del proyecto y configura de forma global el middleware para el procesamiento de datos
+ * en peticiones HTTP. Implementa un middleware personalizado para el control de acceso de origen cruzado (CORS),
+ * interceptando solicitudes de tipo OPTIONS y homogeneizando las cabeceras de respuesta y credenciales permitidas.
+ * Asimismo, define un manejador centralizado de errores que captura excepciones y retorna respuestas en formato JSON,
+ * adaptando el nivel de detalle de depuración según el entorno configurado, para finalmente integrar las rutas de
+ * autenticación y de gestión de incidencias antes de la ejecución del servidor.
  */
-
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -13,23 +16,20 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $app = AppFactory::create();
 
-// 1. Parsear cuerpos de peticiones JSON obligatoriamente
 $app->addBodyParsingMiddleware();
 
-// 2. MIDDLEWARE DE CORS DETERMINISTA (Debe ejecutarse antes que todo el ruteo)
 $app->add(function (Request $request, $handler) {
-    // Si es una petición OPTIONS (Preflight), respondemos directamente sin pasar al ruteo
+
     if ($request->getMethod() === 'OPTIONS') {
         $response = AppFactory::determineResponseFactory()->createResponse();
         return $response
-            ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500') // Tu origen exacto del Frontend
+            ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500') 
             ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
             ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withStatus(200);
     }
 
-    // Para peticiones normales (POST, GET, etc.), procesamos y añadimos las cabeceras a la salida
     $response = $handler->handle($request);
     
     return $response
@@ -40,7 +40,6 @@ $app->add(function (Request $request, $handler) {
         ->withHeader('Content-Type', 'application/json');
 });
 
-// 3. Manejador de Errores Globales adaptado para no romper CORS
 $config = require __DIR__ . '/../config/config.php';
 $errorMiddleware = $app->addErrorMiddleware(
     $config['display_errors'], 
@@ -71,16 +70,13 @@ $errorMiddleware->setDefaultErrorHandler(function (Request $request, Throwable $
 
     $response->getBody()->write(json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     
-    // Crucial: Los errores también deben llevar cabeceras CORS, si no, el navegador los bloquea y no ves el mensaje real
     return $response
         ->withStatus($statusCode)
         ->withHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5500')
         ->withHeader('Content-Type', 'application/json');
 });
 
-// 4. Inclusión de las Rutas Modulares
 require __DIR__ . '/../src/Auth/routes.php';
 require __DIR__ . '/../src/Incidencias/routes.php';
 
-// 5. Ejecutar la Aplicación
 $app->run();

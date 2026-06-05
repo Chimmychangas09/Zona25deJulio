@@ -3,7 +3,7 @@
     "description": "API REST para la Gestión de Incidencias Urbanas - Zona 25 de Julio",
     "type": "project",
     "license": "MIT",
-    "required": {
+    "require": {
         "php": ">=8.0",
         "slim/slim": "4.*",
         "slim/psr7": "1.*"
@@ -16,9 +16,5 @@
     "config": {
         "process-timeout": 0,
         "sort-packages": true
-    },
-    "require": {
-        "slim/psr7": "1.*",
-        "slim/slim": "4.*"
     }
 }

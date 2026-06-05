@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * Script de automatización para la migración de base de datos e inyección de datos semilla (seeders).
+ * Carga el cargador automático de clases, establece la conexión con la base de datos y ejecuta la
+ * estructura del esquema definida en el archivo SQL externo. Adicionalmente, inicializa de forma
+ * segura los roles por defecto del sistema y verifica la existencia de un usuario administrador;
+ * en caso de no encontrarse registros previos, genera una cuenta de administración inicial con
+ * credenciales por defecto y contraseña debidamente cifrada mediante el algoritmo BCRYPT.
+ */
 use App\Database\Connection;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -9,7 +16,6 @@ try {
     
     $db = Connection::getConnection();
     
-    // 1. Leer y ejecutar el Schema SQL
     $sqlSchema = file_get_contents(__DIR__ . '/schema.sql');
     if ($sqlSchema === false) {
         throw new Exception("No se pudo leer el archivo schema.sql");
@@ -18,17 +24,15 @@ try {
     $db->exec($sqlSchema);
     echo "[✔] Estructura de tablas y esquemas generada con éxito.\n";
     
-    // 2. Inyectar Roles Base
     $stmtRole = $db->prepare("INSERT OR IGNORE INTO roles (id, nombre) VALUES (?, ?)");
     $stmtRole->execute([1, 'Administrador']);
     $stmtRole->execute([2, 'Ciudadano']);
     echo "[✔] Roles base ('Administrador', 'Ciudadano') inicializados.\n";
-    
-    // 3. Verificar si ya existe un Administrador para evitar duplicados
+
     $checkAdmin = $db->query("SELECT COUNT(*) FROM usuarios WHERE rol_id = 1")->fetchColumn();
     
     if ($checkAdmin == 0) {
-        // Generar credencial de administrador por defecto de forma segura
+
         $nombreAdmin = "Gestor Vecinal 25 de Julio";
         $correoAdmin = "admin@zona25julio.com";
         $passwordPlana = "GestionUrbana2026!";
