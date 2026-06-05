@@ -56,28 +56,32 @@
 
     <div class="flex-1 flex flex-col h-full overflow-hidden relative">
         
-        <header class="h-16 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 flex items-center justify-between px-6 z-10 shrink-0">
-            <h2 id="headerTitle" class="text-lg font-bold text-white flex items-center gap-2">
-                <i class="ti ti-layout-dashboard text-blue-500"></i> Panel de Control
+        <header class="h-16 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 z-10 shrink-0">
+            <h2 id="headerTitle" class="text-sm sm:text-lg font-bold text-white flex items-center gap-2 truncate">
+                <i class="ti ti-layout-dashboard text-blue-500"></i> <span class="truncate">Panel</span>
             </h2>
             
-            <div class="flex items-center gap-3">
-                <button id="btnAbrirRegAdmin" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                    <i class="ti ti-user-plus text-base"></i> <span class="hidden sm:inline">Nuevo Admin</span>
+            <div class="flex items-center gap-1.5 sm:gap-3">
+                <button id="btnAbrirRegAdmin" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-bold py-2 px-2.5 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors shadow-sm">
+                    <i class="ti ti-user-plus text-sm sm:text-base"></i> <span class="hidden sm:inline">Nuevo Admin</span>
                 </button>
 
-                <button id="btnAbrirConfigSistema" class="relative z-50 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Configurar Sectores y Tipos de Daño">
-                    <i class="ti ti-settings text-base"></i> <span class="hidden sm:inline">Sectores / Daños</span>
+                <button id="btnAbrirConfigSistema" class="relative z-50 bg-purple-600 hover:bg-purple-500 text-white text-[11px] sm:text-xs font-bold py-2 px-2.5 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors shadow-sm" title="Configurar Sectores y Tipos de Daño">
+                    <i class="ti ti-settings text-sm sm:text-base"></i> <span class="hidden sm:inline">Sectores / Daños</span>
                 </button>
                 
-                <button id="btnAbrirReporteAdmin" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                    <i class="ti ti-plus text-base"></i> <span class="hidden sm:inline">Reportar</span>
+                <button id="btnAbrirReporteAdmin" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold py-2 px-2.5 rounded-lg flex items-center gap-1 sm:gap-2 transition-colors shadow-sm">
+                    <i class="ti ti-plus text-sm sm:text-base"></i> <span class="hidden sm:inline">Reportar</span>
                 </button>
 
-                <button class="border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-xs font-medium py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer" id="btnRefresh" onclick="loadAdminDashboard()">
+                <button class="border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-[11px] sm:text-xs font-medium py-2 px-2.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer" id="btnRefresh" onclick="loadAdminDashboard()">
                     <i class="ti ti-refresh"></i>
-                    <span>Actualizar Mapa</span>
+                    <span class="hidden md:inline">Actualizar Mapa</span>
                 </button>
+
+                <a href="#" id="btnMobileLogout" class="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title="Cerrar Sesión">
+                    <i class="ti ti-logout text-lg"></i>
+                </a>
             </div>
         </header>
 
